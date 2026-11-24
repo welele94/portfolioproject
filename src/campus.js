@@ -111,15 +111,41 @@ plane(64,3.5,0,45,road,.06);
 plane(64,3.5,0,-45,road,.06);
 plane(3.8,92,-30,0,road,.06);
 plane(3.8,92,30,0,road,.06);
-// Caminhos: Casa (sudoeste) -> jardim -> Projetos (nordeste).
-plane(5,74,0,0,pavement,.08);
-plane(50,5,0,-5,pavement,.085);
-plane(50,5,0,24,pavement,.085);
-plane(5,31,17,-10,pavement,.085);
-plane(5,31,-17,8,pavement,.085);
-
-// Jardim central, fonte e bancos.
+// Jardim e rede pedonal contínua. O pavimento fica acima da relva.
 plane(32,28,0,13,plants,.09);
+const pathWidth=3;
+function walk(x1,z1,x2,z2,width=pathWidth){
+  if(x1!==x2&&z1!==z2)throw new Error('Segmento pedonal deve ser axial');
+  plane(Math.abs(x2-x1)+width,Math.abs(z2-z1)+width,
+    (x1+x2)/2,(z1+z2)/2,pavement,.125);
+}
+// Eixo norte-sul: contorna a fonte pelo lado direito.
+walk(0,-26.5,0,8);
+walk(0,8,5,8);
+walk(5,8,5,24);
+walk(5,24,0,24);
+walk(0,24,0,42);
+// Ligações transversais do jardim, evitando os edifícios.
+walk(-12,-5,10,-5);
+walk(-23,24,20,24);
+walk(-10,-5,-10,24);
+walk(16,5,16,24);
+walk(0,5,20,5);
+walk(20,5,20,2);
+// Acessos às fachadas dos apartamentos e UAb.
+walk(-20,-.5,-20,3);
+walk(-20,3,-10,3);
+walk(21,-28,21,-23);
+walk(0,-23,21,-23);
+
+// Passeio sul, em frente à Casa e UAb.
+walk(-25.4,42,20,42);
+walk(-25.4,40,-25.4,42);
+walk(-19,40,-19,42);
+walk(-12.6,40,-12.6,42);
+walk(20,40.5,20,42);
+// Ligação sul-norte pelo corredor entre Casa e jardim.
+walk(-9,24,-9,42);
 // Fonte: diâmetro 5 m; borda a 0.50 m, água pouco abaixo.
 addCircleObstacle(0,15,2.55);
 const fountainBase=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.55,HUMAN.fountainRimHeight,32),white);
@@ -128,10 +154,10 @@ const fountainWater=new THREE.Mesh(new THREE.CylinderGeometry(2.12,2.12,.05,32),
 fountainWater.position.set(0,HUMAN.fountainRimHeight-.07,15);scene.add(fountainWater);
 const fountainJet=new THREE.Mesh(new THREE.CylinderGeometry(.08,.15,1.10,12),water);
 fountainJet.position.set(0,HUMAN.fountainRimHeight+.49,15);scene.add(fountainJet);
-for(const [x,z] of [[-12,5],[-9,19],[11,7],[10,22],[-6,28],[7,30]]) tree(x,z,.85);
+for(const [x,z] of [[-13,7],[-7,19],[11,9],[10,20],[-6,28],[7,30]]) tree(x,z,.85);
 // Bancos: assento a 45 cm (antes ~81 cm), 1.60 x 0.43 m.
 const benchWood=mat('#846348');
-for(const [x,z] of [[-6,8],[7,8],[-7,25],[7,25]]) {
+for(const [x,z] of [[-6,8],[8,11],[-7,27],[7,27]]) {
   addBoxObstacle(x,z,HUMAN.benchLength,HUMAN.seatDepth);
   const seatThickness=.10;
   block(HUMAN.benchLength,seatThickness,HUMAN.seatDepth,x,HUMAN.seatHeight-seatThickness/2,z,benchWood);
