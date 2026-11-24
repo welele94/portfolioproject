@@ -10,11 +10,17 @@
 .panel h1{font-size:18px;margin:0 0 5px}.panel p{font-size:13px;line-height:1.5;margin:0;color:#d3dce5}
 footer{position:absolute;bottom:16px;left:16px;background:#14222de0;color:#fff;padding:9px 13px;border-radius:10px;font-size:12px}
 a{color:#9addff}footer a{pointer-events:auto}
+.scale-controls{position:absolute;top:18px;right:18px;display:flex;flex-direction:column;gap:7px;align-items:flex-end;color:white}
+.scale-controls button{border:1px solid #ffffff55;border-radius:9px;background:#14222de8;color:white;padding:11px 15px;cursor:pointer;font:600 13px system-ui}
+.scale-controls button:hover,.scale-controls button[aria-pressed="true"]{background:#235c75}
+#scale-status{font:12px system-ui;background:#14222de8;padding:6px 9px;border-radius:7px}
+@media(max-width:650px){.panel{max-width:55%;font-size:11px}.scale-controls{top:auto;bottom:56px}}
 </style>
 </head>
 <body>
 <canvas id="world" aria-label="Planta 3D do campus do portfólio"></canvas>
 <div class="panel"><h1>Campus 3D — Protótipo 01</h1><p>Casa à esquerda · fonte no jardim · projetos à direita. Arrasta para rodar, usa a roda para aproximar e pressiona H para mostrar uma referência humana de 1,75 m. A vista continua orbital; first-person será implementado depois.</p></div>
+<div class="scale-controls"><button id="scale-toggle" type="button" aria-pressed="false">Mostrar pessoa (H)</button><div id="scale-status" role="status">Referência humana: oculta</div></div>
 <footer>Three.js · Geometria procedural · <a href="./avatar.html">Ver protótipo do avatar</a></footer>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module" src="./src/campus.js"></script>
