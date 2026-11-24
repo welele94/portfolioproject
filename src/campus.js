@@ -2,7 +2,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Primeiro protótipo do campus: volumes, caminhos e orientação.
-// 1 unidade = 1 metro virtual. Norte = Z negativo.
+// Escala de referência: 1 unidade = 1 metro virtual. Norte = Z negativo.
+// A vista orbital atual não é first-person. A altura dos olhos será usada na FPV.
+const HUMAN = Object.freeze({
+  height: 1.75, eyeHeight: 1.68,
+  doorHeight: 2.15, doorWidth: 1.20,
+  seatHeight: .45, seatDepth: .43, benchLength: 1.60,
+  fountainRimHeight: .50
+});
 const canvas = document.querySelector('#world');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#b9d4e8');
@@ -63,26 +70,30 @@ function windows(x,z,w,d,height,floors=2){
 function structure(name,x,z,w,d,h,accent=roofMat,floors=2){
   block(w,h,d,x,h/2,z,building);
   block(w+.7,.45,d+.7,x,h+.24,z,accent);
-  block(2.5,2.6,.14,x,1.3,z+d/2+.13,dark,scene,false);
+  // Porta com altura humana: ainda não é um vão real transitável.
+  block(HUMAN.doorWidth,HUMAN.doorHeight,.14,x,HUMAN.doorHeight/2,z+d/2+.13,dark,scene,false);
   windows(x,z,w,d,h,floors);
   label(name,x,h+.55,z,w*.85);
 }
 function tree(x,z,scale=1) {
-  const c=new THREE.Mesh(new THREE.CylinderGeometry(.22*scale,.35*scale,2.5*scale,7),trunk);
-  c.position.set(x,1.25*scale,z);c.castShadow=true;scene.add(c);
-  const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(1.6*scale,1),leaves[Math.floor((Math.abs(x*13+z*17))%leaves.length)]);
-  canopy.position.set(x,3.25*scale,z);canopy.castShadow=true;scene.add(canopy);
+  // Árvore estilizada ~4 m no tamanho 1.
+  const trunkHeight=1.9*scale, canopyRadius=1.1*scale;
+  const c=new THREE.Mesh(new THREE.CylinderGeometry(.13*scale,.24*scale,trunkHeight,7),trunk);
+  c.position.set(x,trunkHeight/2,z);c.castShadow=true;scene.add(c);
+  const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(canopyRadius,1),leaves[Math.floor((Math.abs(x*13+z*17))%leaves.length)]);
+  canopy.position.set(x,trunkHeight+canopyRadius*.85,z);canopy.castShadow=true;scene.add(canopy);
 }
 function billboard(title,x,z) {
-  block(.14,3,.14,x,1.6,z,dark);
+  // Base do painel a 2.2 m, para não obstruir a linha dos olhos.
+  block(.12,3.3,.12,x,1.65,z,dark);
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;
   const context=canvas.getContext('2d');context.fillStyle='#192b43';context.fillRect(0,0,512,256);
   context.strokeStyle='#6dc9ff';context.lineWidth=12;context.strokeRect(8,8,496,240);
   context.fillStyle='#ffffff';context.font='bold 40px system-ui';context.textAlign='center';context.textBaseline='middle';
   context.fillText(title,256,128,470);
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
-  const sign=new THREE.Mesh(new THREE.PlaneGeometry(5.8,2.9),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));
-  sign.position.set(x,4.1,z);scene.add(sign);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(4.5,2.0),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));
+  sign.position.set(x,3.2,z);scene.add(sign);
 }
 // Terreno vertical, 64 m de largura por 96 m de comprimento.
 plane(64,96,0,0,ground,0);
@@ -99,19 +110,29 @@ plane(5,31,-17,8,pavement,.085);
 
 // Jardim central, fonte e bancos.
 plane(32,28,0,13,plants,.09);
-const fountainBase=new THREE.Mesh(new THREE.CylinderGeometry(4.3,4.5,.65,32),white);
-fountainBase.position.set(0,.5,15);fountainBase.castShadow=true;scene.add(fountainBase);
-const fountainWater=new THREE.Mesh(new THREE.CylinderGeometry(3.6,3.6,.1,32),water);
-fountainWater.position.set(0,.88,15);scene.add(fountainWater);
-const fountainJet=new THREE.Mesh(new THREE.CylinderGeometry(.19,.34,2.4,12),water);
-fountainJet.position.set(0,2.1,15);scene.add(fountainJet);
+// Fonte: diâmetro 5 m; borda a 0.50 m, água pouco abaixo.
+const fountainBase=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.55,HUMAN.fountainRimHeight,32),white);
+fountainBase.position.set(0,HUMAN.fountainRimHeight/2,15);fountainBase.castShadow=true;scene.add(fountainBase);
+const fountainWater=new THREE.Mesh(new THREE.CylinderGeometry(2.12,2.12,.05,32),water);
+fountainWater.position.set(0,HUMAN.fountainRimHeight-.07,15);scene.add(fountainWater);
+const fountainJet=new THREE.Mesh(new THREE.CylinderGeometry(.08,.15,1.10,12),water);
+fountainJet.position.set(0,HUMAN.fountainRimHeight+.49,15);scene.add(fountainJet);
 for(const [x,z] of [[-12,5],[-9,19],[11,7],[10,22],[-6,28],[7,30]]) tree(x,z,.85);
-for(const [x,z] of [[-6,8],[7,8],[-7,25],[7,25]]){block(2.6,.22,.65,x,.7,z,mat('#846348'));block(.14,.7,.7,x-1,.35,z,trunk);block(.14,.7,.7,x+1,.35,z,trunk);}
+// Bancos: assento a 45 cm (antes ~81 cm), 1.60 x 0.43 m.
+const benchWood=mat('#846348');
+for(const [x,z] of [[-6,8],[7,8],[-7,25],[7,25]]) {
+  const seatThickness=.10;
+  block(HUMAN.benchLength,seatThickness,HUMAN.seatDepth,x,HUMAN.seatHeight-seatThickness/2,z,benchWood);
+  for(const side of [-1,1]) block(.09,HUMAN.seatHeight-seatThickness,.09,x+side*.61,(HUMAN.seatHeight-seatThickness)/2,z,trunk);
+  const back=block(HUMAN.benchLength,.35,.08,x,.65,z-HUMAN.seatDepth/2+.04,benchWood);
+  back.rotation.x=-.12;
+}
 
 // Casa: três edifícios unidos na zona inferior esquerda, ponto inicial.
 for(const [i,x] of [-1,0,1].map((i)=>[i,-19+i*6.4])){
   block(6.2,7.4,12,x,3.7,34,mat(['#c5b4a3','#b7c8c1','#d0b3a8'][i+1]));
   block(6.3,.55,12.3,x,7.7,34,mat('#995b4b'));
+  block(HUMAN.doorWidth,HUMAN.doorHeight,.14,x,HUMAN.doorHeight/2,40.08,dark,scene,false);
 }
 label('CASA',-19,8.4,34,14);
 
@@ -132,6 +153,17 @@ structure('APARTAMENTOS',21,-34,14,12,11,roofMat,4);
 // Árvores periféricas.
 for(let z=-41;z<=41;z+=8){ tree(-27,z,.85); if(z>20||z< -22)tree(27,z,.85); }
 for(let x=-25;x<=25;x+=8)tree(x,-41,.9);
+
+// Referência de escala: H mostra/esconde silhueta de 1.75 m no jardim.
+const humanReference=new THREE.Group();
+const body=new THREE.Mesh(new THREE.CapsuleGeometry(.23,1.29,5,10),mat('#e59b32'));
+body.position.y=HUMAN.height/2;humanReference.add(body);
+const eyes=new THREE.Mesh(new THREE.SphereGeometry(.055,12,8),mat('#1f3b60'));
+eyes.position.y=HUMAN.eyeHeight;humanReference.add(eyes);
+humanReference.position.set(-5,0,12);humanReference.visible=false;scene.add(humanReference);
+window.addEventListener('keydown',event=>{
+  if(event.code==='KeyH' && !event.repeat) humanReference.visible=!humanReference.visible;
+});
 
 const controls=new OrbitControls(camera,canvas);
 controls.target.set(0,0,0); controls.enableDamping=true;
