@@ -76,9 +76,9 @@ function structure(name,x,z,w,d,h,accent=roofMat,floors=2){
   label(name,x,h+.55,z,w*.85);
 }
 function tree(x,z,scale=1) {
-  // Árvore estilizada ~4 m no tamanho 1.
-  const trunkHeight=1.9*scale, canopyRadius=1.1*scale;
-  const c=new THREE.Mesh(new THREE.CylinderGeometry(.13*scale,.24*scale,trunkHeight,7),trunk);
+  // Árvores de parque: ~6 m de altura para escala 1, sem copa ao nível dos olhos.
+  const trunkHeight=3.25*scale, canopyRadius=1.55*scale;
+  const c=new THREE.Mesh(new THREE.CylinderGeometry(.19*scale,.29*scale,trunkHeight,7),trunk);
   c.position.set(x,trunkHeight/2,z);c.castShadow=true;scene.add(c);
   const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(canopyRadius,1),leaves[Math.floor((Math.abs(x*13+z*17))%leaves.length)]);
   canopy.position.set(x,trunkHeight+canopyRadius*.85,z);canopy.castShadow=true;scene.add(canopy);
@@ -160,9 +160,37 @@ const body=new THREE.Mesh(new THREE.CapsuleGeometry(.23,1.29,5,10),mat('#e59b32'
 body.position.y=HUMAN.height/2;humanReference.add(body);
 const eyes=new THREE.Mesh(new THREE.SphereGeometry(.055,12,8),mat('#1f3b60'));
 eyes.position.y=HUMAN.eyeHeight;humanReference.add(eyes);
-humanReference.position.set(-5,0,12);humanReference.visible=false;scene.add(humanReference);
+// Colocada num caminho aberto, junto à fonte, para não ficar escondida pela relva.
+humanReference.position.set(-4,0,15);
+const calibrationRing = new THREE.Mesh(
+  new THREE.TorusGeometry(.68,.065,10,40),
+  new THREE.MeshBasicMaterial({ color: 0xffa82e, depthTest:false })
+);
+calibrationRing.rotation.x=-Math.PI/2;
+calibrationRing.position.y=.14;
+humanReference.add(calibrationRing);
+humanReference.visible=false;
+scene.add(humanReference);
+// O indicador no ecrã confirma o estado, mesmo quando a pessoa é pequena na vista aérea.
+const toggleCalibration=()=>{
+  humanReference.visible=!humanReference.visible;
+  const status=document.querySelector('#scale-status');
+  const button=document.querySelector('#scale-toggle');
+  if(status)status.textContent=humanReference.visible?'Referência humana: visível (1,75 m)':'Referência humana: oculta';
+  if(button)button.setAttribute('aria-pressed',String(humanReference.visible));
+  if(humanReference.visible) {
+    // Aproxima a vista à referência apenas na primeira ativação.
+    controls.target.set(-4,1,15);
+    camera.position.set(5,8,29);
+    controls.update();
+  }
+};
+document.querySelector('#scale-toggle')?.addEventListener('click',toggleCalibration);
 window.addEventListener('keydown',event=>{
-  if(event.code==='KeyH' && !event.repeat) humanReference.visible=!humanReference.visible;
+  if((event.key?.toLowerCase()==='h'||event.code==='KeyH') && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey) {
+    event.preventDefault();
+    toggleCalibration();
+  }
 });
 
 const controls=new OrbitControls(camera,canvas);
