@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNavigation } from './navigation.js';
+import { createProjectsHall } from './projects-hall.js';
 
 // Primeiro protótipo do campus: volumes, caminhos e orientação.
 // Escala de referência: 1 unidade = 1 metro virtual. Norte = Z negativo.
@@ -148,9 +149,9 @@ for(const [i,x] of [-1,0,1].map((i)=>[i,-19+i*6.4])){
 }
 label('CASA',-19,8.4,34,14);
 
-// Centro Tecnológico / Projetos: lado direito, destino principal.
-structure('PROJETOS',20,-8,17,20,9,blue,3);
-block(15,.45,1.1,20,5.2,2.6,blue);
+// Centro Tecnológico: paredes reais com abertura transitável, três quiosques
+// interativos e teto separado, sem o antigo bloco maciço.
+const projectsHall=createProjectsHall({scene,obstacles});
 billboard('Geneva Drive',8,-5);
 billboard('Help! App',8,6);
 billboard('One more thing...',8,28);
@@ -227,12 +228,49 @@ const navigation=createNavigation({
   camera,canvas,controls,obstacles,
   spawn:{x:-19,z:42},destination,eyeHeight:HUMAN.eyeHeight
 });
+
+const prompt=document.querySelector('#project-prompt');
+const modal=document.querySelector('#project-modal');
+const title=document.querySelector('#project-title');
+const subtitle=document.querySelector('#project-subtitle');
+const description=document.querySelector('#project-description');
+const projectLink=document.querySelector('#project-link');
+let nearbyProject=null;
+function closeProject(){
+  if(modal)modal.hidden=true;
+}
+function openProject(project){
+  if(!project || !modal)return;
+  if(document.pointerLockElement===canvas)document.exitPointerLock?.();
+  title.textContent=project.title;
+  subtitle.textContent=project.subtitle;
+  description.textContent=project.detail;
+  projectLink.href=project.url;
+  modal.hidden=false;
+}
+document.querySelector('#project-close')?.addEventListener('click',closeProject);
+modal?.addEventListener('click',(event)=>{if(event.target===modal)closeProject();});
+window.addEventListener('keydown',(event)=>{
+  if(event.code==='Escape' && modal && !modal.hidden)closeProject();
+  if(event.code==='KeyE' && !event.repeat && navigation.getMode()==='first') {
+    event.preventDefault();
+    if(modal && !modal.hidden) closeProject();
+    else if(nearbyProject)openProject(nearbyProject);
+  }
+});
 function resize(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(canvas);resize();
 const clock=new THREE.Clock();
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),.05);
-  navigation.update(dt);
+  if(!modal || modal.hidden)navigation.update(dt);
+  const playerPosition=navigation.getPlayerPosition();
+  projectsHall.update(dt,playerPosition);
+  nearbyProject=projectsHall.nearest(playerPosition);
+  if(prompt){
+    prompt.hidden=navigation.getMode()!=='first'||!nearbyProject||Boolean(modal&&!modal.hidden);
+    if(nearbyProject)prompt.textContent='E — Explorar '+nearbyProject.title;
+  }
   if(navigation.getMode()==='aerial')controls.update();
   destinationMarker.material.opacity=.68+.24*Math.sin(clock.elapsedTime*3);
   destinationMarker.material.transparent=true;
