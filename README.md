@@ -47,9 +47,9 @@ Usa-se **1 unidade = 1 metro virtual**. Nesta revisão foram ajustados:
 - Banco: assento a **0,45 m**, comprimento **1,60 m**, profundidade **0,43 m**, encosto a cerca de **0,83 m**;
 - Portas visuais: **2,15 × 1,20 m**, incluindo entradas na Casa (continuam sem abertura física);
 - Fonte: diâmetro **5 m**, borda a **0,50 m**;
-- Árvores: copa e tronco redimensionados para aproximadamente **4 m** antes dos fatores de escala;
+- Árvores: copa e tronco redimensionados para aproximadamente **6 m** antes dos fatores de escala (as instâncias usam fatores de 0,85–0,90);
 - Outdoors: painel **4,5 × 2 m** com a parte inferior a **2,2 m**;
-- Tecla **H** mostra/esconde uma referência humana temporária de **1,75 m**, com marcador de olhos a **1,68 m**.
+- Tecla **H** ou botão **Mostrar pessoa (H)** mostra/esconde uma referência humana temporária de **1,75 m**, com marcador de olhos a **1,68 m**; ao ativar, a câmara aproxima-se e o estado aparece no ecrã.
 
 A vista do campus permanece orbital; **não foi alterada para first-person**. A próxima etapa é implementar a navegação FPV com altura dos olhos de 1,68 m, FOV de aproximadamente 70°, colisões e medição da rota Casa → Projetos.
 
