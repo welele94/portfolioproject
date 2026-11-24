@@ -10,6 +10,15 @@
 .panel h1{font-size:18px;margin:0 0 5px}.panel p{font-size:13px;line-height:1.5;margin:0;color:#d3dce5}
 footer{position:absolute;bottom:16px;left:16px;background:#14222de0;color:#fff;padding:9px 13px;border-radius:10px;font-size:12px}
 a{color:#9addff}footer a{pointer-events:auto}
+.nav-actions{position:absolute;bottom:65px;left:18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nav-actions button{padding:11px 14px;background:#14222df0;color:white;border:1px solid #ffffff55;border-radius:9px;font:600 13px system-ui;cursor:pointer}
+.nav-actions button:hover{background:#235c75}
+#player-hud{position:absolute;bottom:118px;left:18px;background:#14222de8;color:#fff;padding:12px 15px;border-radius:12px;font-size:13px}
+#player-hud p{margin:4px 0}#nav-status{font-weight:600}
+#crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:white;font:28px system-ui;text-shadow:0 0 4px #123}
+#fps-hint{position:absolute;bottom:65px;right:18px;max-width:300px;color:white;background:#14222de8;padding:10px;border-radius:9px;font:12px system-ui}
+[hidden]{display:none!important}
+@media(max-width:650px){#player-hud{bottom:140px}.nav-actions{bottom:64px}#fps-hint{bottom:122px;right:8px;max-width:170px}}
 .scale-controls{position:absolute;top:18px;right:18px;display:flex;flex-direction:column;gap:7px;align-items:flex-end;color:white}
 .scale-controls button{border:1px solid #ffffff55;border-radius:9px;background:#14222de8;color:white;padding:11px 15px;cursor:pointer;font:600 13px system-ui}
 .scale-controls button:hover,.scale-controls button[aria-pressed="true"]{background:#235c75}
@@ -19,8 +28,12 @@ a{color:#9addff}footer a{pointer-events:auto}
 </head>
 <body>
 <canvas id="world" aria-label="Planta 3D do campus do portfólio"></canvas>
-<div class="panel"><h1>Campus 3D — Protótipo 01</h1><p>Casa à esquerda · fonte no jardim · projetos à direita. Arrasta para rodar, usa a roda para aproximar e pressiona H para mostrar uma referência humana de 1,75 m. A vista continua orbital; first-person será implementado depois.</p></div>
+<div class="panel"><h1>Campus 3D — Protótipo 02</h1><p>Casa → Jardim → Projetos. V alterna vista aérea / first-person; WASD anda, Shift corre, R reinicia. Clica no mundo para controlar o rato e Esc para o libertar.</p></div>
 <div class="scale-controls"><button id="scale-toggle" type="button" aria-pressed="false">Mostrar pessoa (H)</button><div id="scale-status" role="status">Referência humana: oculta</div></div>
+<div class="nav-actions"><button id="view-toggle" type="button">Jogar em first-person (V)</button><button id="route-restart" type="button">Reiniciar percurso (R)</button></div>
+<div id="player-hud" hidden><p id="nav-status">Pronto para explorar</p><p>Tempo: <strong id="route-timer">0.0 s</strong> · Distância: <strong id="route-distance">—</strong></p></div>
+<div id="crosshair" hidden>+</div>
+<div id="fps-hint" hidden>Clica no cenário para ativar o rato. Esc liberta o cursor. Chega ao círculo verde junto à entrada dos Projetos.</div>
 <footer>Three.js · Geometria procedural · <a href="./avatar.html">Ver protótipo do avatar</a></footer>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module" src="./src/campus.js"></script>
