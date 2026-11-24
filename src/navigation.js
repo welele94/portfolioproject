@@ -8,6 +8,7 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
   const RUN_SPEED = 6.2;  // sprint: ~10 s até à porta dos Projetos
   const BOUNDS = {minX:-28.8,maxX:28.8,minZ:-43.0,maxZ:43.0};
   const player = new THREE.Vector3(spawn.x,eyeHeight,spawn.z);
+  let paused=false;
   let mode='aerial',yaw=-.75,pitch=0,clockStarted=false,elapsed=0,completed=false;
   let aerialPosition = camera.position.clone();
   let aerialTarget = controls.target.clone();
@@ -27,6 +28,10 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
       if(o.type==='circle'){
         const dx=x-o.x,dz=z-o.z;
         if(dx*dx+dz*dz<(radius+o.r)**2)return true;
+      } else if(o.type==='oriented'){
+        const dx=x-o.x,dz=z-o.z,c=Math.cos(o.angle),s=Math.sin(o.angle);
+        const lx=dx*c-dz*s,lz=dx*s+dz*c;
+        if(Math.hypot(Math.max(0,Math.abs(lx)-o.w/2),Math.max(0,Math.abs(lz)-o.d/2))<radius)return true;
       } else {
         const qx=Math.max(o.x-o.w/2,Math.min(x,o.x+o.w/2));
         const qz=Math.max(o.z-o.d/2,Math.min(z,o.z+o.d/2));
@@ -88,14 +93,14 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
     if(mode==='first'&&status) status.textContent=document.pointerLockElement===canvas?'WASD andar · Shift correr · V vista aérea · R reiniciar':'Clica no cenário para controlar o rato';
   });
   document.addEventListener('mousemove',event=>{
-    if(mode!=='first'||document.pointerLockElement!==canvas)return;
+    if(paused||mode!=='first'||document.pointerLockElement!==canvas)return;
     const sensitivity=.0022;
     yaw-=event.movementX*sensitivity;
     pitch=Math.max(-Math.PI/2+.08,Math.min(Math.PI/2-.08,pitch-event.movementY*sensitivity));
     look();
   });
   document.addEventListener('keydown',event=>{
-    if(event.altKey||event.ctrlKey||event.metaKey)return;
+    if(paused||event.altKey||event.ctrlKey||event.metaKey)return;
     const key=event.code;
     if(['KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyV','KeyR'].includes(key)) event.preventDefault();
     if(key==='KeyV'&&!event.repeat)setMode(mode==='first'?'aerial':'first');
@@ -106,7 +111,7 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
   window.addEventListener('blur',()=>keys.clear());
   document.addEventListener('visibilitychange',()=>{if(document.hidden)keys.clear();});
   function update(dt) {
-    if(mode!=='first')return;
+    if(paused||mode!=='first')return;
     const forward=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'));
     const strafe=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'));
     const length=Math.hypot(forward,strafe);
@@ -131,5 +136,5 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
     updateHud();
   }
   updateHud();
-  return { update, getMode:()=>mode, getPlayerPosition:()=>player, setMode };
+  return { update, setPaused(value){paused=value;keys.clear();if(viewButton)viewButton.disabled=value;if(restartButton)restartButton.disabled=value;}, getMode:()=>mode, getPlayerPosition:()=>player, setMode };
 }

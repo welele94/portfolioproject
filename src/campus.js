@@ -235,9 +235,22 @@ const title=document.querySelector('#project-title');
 const subtitle=document.querySelector('#project-subtitle');
 const description=document.querySelector('#project-description');
 const projectLink=document.querySelector('#project-link');
-let nearbyProject=null;
+const raycaster=new THREE.Raycaster();
+const targets=new Map();
+for(const action of projectsHall.interactables)
+  for(const mesh of action.meshes)targets.set(mesh,action);
+function getInteraction(){
+  if(navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
+  scene.updateMatrixWorld(true);
+  camera.updateMatrixWorld(true);
+  raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+  raycaster.far=3;
+  const hit=raycaster.intersectObjects(scene.children,true).find(h=>h.object.visible&&h.object.material?.depthTest!==false);
+  return hit?targets.get(hit.object)||null:null;
+}
 function closeProject(){
   if(modal)modal.hidden=true;
+  navigation.setPaused(false);
 }
 function openProject(project){
   if(!project || !modal)return;
@@ -247,15 +260,18 @@ function openProject(project){
   description.textContent=project.detail;
   projectLink.href=project.url;
   modal.hidden=false;
+  navigation.setPaused(true);
+  projectLink.textContent=project.url.includes('codepen.io')?'Abrir no CodePen':'Abrir no GitHub';
+  document.querySelector('#project-close')?.focus();
 }
 document.querySelector('#project-close')?.addEventListener('click',closeProject);
 modal?.addEventListener('click',(event)=>{if(event.target===modal)closeProject();});
 window.addEventListener('keydown',(event)=>{
   if(event.code==='Escape' && modal && !modal.hidden)closeProject();
-  if(event.code==='KeyE' && !event.repeat && navigation.getMode()==='first') {
+  if(event.code==='KeyE' && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey && navigation.getMode()==='first') {
     event.preventDefault();
     if(modal && !modal.hidden) closeProject();
-    else if(nearbyProject)openProject(nearbyProject);
+    else {const action=getInteraction();const project=action?.activate();if(project)openProject(project);}
   }
 });
 function resize(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
@@ -266,10 +282,10 @@ renderer.setAnimationLoop(()=>{
   if(!modal || modal.hidden)navigation.update(dt);
   const playerPosition=navigation.getPlayerPosition();
   projectsHall.update(dt,playerPosition);
-  nearbyProject=projectsHall.nearest(playerPosition);
+  const action=getInteraction();
   if(prompt){
-    prompt.hidden=navigation.getMode()!=='first'||!nearbyProject||Boolean(modal&&!modal.hidden);
-    if(nearbyProject)prompt.textContent='E — Explorar '+nearbyProject.title;
+    prompt.hidden=!action;
+    if(action)prompt.textContent='E — '+action.label();
   }
   if(navigation.getMode()==='aerial')controls.update();
   destinationMarker.material.opacity=.68+.24*Math.sin(clock.elapsedTime*3);
