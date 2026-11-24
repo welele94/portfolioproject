@@ -2,17 +2,18 @@
 
 Portfólio explorável em Three.js, baseado na planta 2D aprovada: **Casa (esquerda) → Jardim com fonte (centro) → Projetos / Centro Tecnológico (direita)**. Dachser, UAb e blocos residenciais são áreas adicionais de exploração.
 
-## Estado atual: protótipo 3D 02 — navegação first-person
+## Estado atual: protótipo 3D 03 — Centro Tecnológico visitável
 
 Esta versão contém **volumes 3D preliminares** e não representa o aspeto final:
 - Terreno alongado (64 × 96 unidades), caminhos, relva e fonte;
 - Casa com três prédios unidos, Projetos à direita, Dachser no topo, UAb em baixo à direita e edifícios residenciais;
 - Árvores, bancos, iluminação e outdoors demonstrativos;
 - Câmara orbital para inspeção da escala e do layout e first-person com WASD, rato e Shift;
-- Colisões simples (círculo contra edifícios, troncos, bancos e fonte); cronómetro Casa → porta dos Projetos;
+- Colisões simples (círculo contra paredes dos edifícios, troncos, bancos e fonte); cronómetro Casa → porta dos Projetos;
+- Centro Tecnológico com entrada real, chão e paredes separadas, teto que desvanece ao entrar e três quiosques interativos.
 - Protótipo anterior de avatar preservado em `avatar.html`.
 
-**Ainda por fazer:** validar o tempo real do percurso (~10 s em corrida, sujeito a teste), criar portas transitáveis e interiores, efeito de teto desvanecente, apresentação dos projetos e otimizações. As colisões atuais são aproximações 2D em XZ.
+**Ainda por fazer:** testar o novo interior no browser, corrigir colisões e a transição; melhorar fachadas/texturas, criar o interior da Dachser, preparar conteúdos definitivos e otimizar. As colisões atuais são aproximações 2D em XZ. O percurso cronometrado Casa → Projetos foi reportado pelo autor em 16,7 s numa tentativa anterior.
 
 ## Executar
 
@@ -30,15 +31,16 @@ Alternativamente, abrir com a extensão VS Code Live Server.
 
 ## Controlos atuais
 
-**Vista aérea:** arrastar para rodar e roda do rato para zoom. **V** alterna entre vista aérea e first-person (também existe botão). Na vista first-person, **clica no cenário** para capturar o rato; **Esc** liberta o cursor. **WASD** ou setas movem-se, **Shift** corre, **R** reinicia percurso/cronómetro. O relógio começa ao mover-se e para ao chegar ao círculo verde junto à entrada dos Projetos. **H** alterna a referência humana de escala.
+**Vista aérea:** arrastar para rodar e roda do rato para zoom. **V** alterna entre vista aérea e first-person (também existe botão). Na vista first-person, **clica no cenário** para capturar o rato; **Esc** liberta o cursor. **WASD** ou setas movem-se, **Shift** corre, **R** reinicia percurso/cronómetro. O relógio começa ao mover-se e para ao chegar ao círculo verde junto à entrada dos Projetos. **H** alterna a referência humana de escala. Dentro do Centro Tecnológico, aproxima-te de um quiosque e carrega em **E** para abrir o painel do projeto; **Esc** fecha-o.
 
-A primeira versão de colisões impede atravessar os blocos, mas ainda não tem portas abertas nem interiores. O cronómetro mede a tentativa em first-person, incluindo paragens, e **não** mede um tempo já validado.
+O Centro Tecnológico tem abertura transitável na fachada (frente Z positivo) e paredes com colisão. Os outros edifícios ainda são blocos sem interiores. O cronómetro mede a tentativa em first-person, incluindo paragens, e **não** mede um tempo já validado.
 
 ## Estrutura
 
 - `index.html` — entrada do campus 3D.
 - `src/campus.js` — geometria procedural, materiais e integração dos obstáculos e do marcador de destino.
 - `src/navigation.js` — movimento FPV, pointer lock, alternância com a vista aérea, colisões, reinício e cronómetro.
+- `src/projects-hall.js` — Centro Tecnológico, paredes com abertura, teto desvanecente e três quiosques de projetos.
 - `avatar.html` — acesso ao protótipo anterior de personagem.
 - `src/main.js` — cena do avatar.
 - `src/avatar.js` — `createAvatar()`, `update()`.
@@ -62,8 +64,9 @@ A vista orbital continua disponível com **V**, juntamente com first-person de o
 1. Testar a navegação FPV e colisões num browser e corrigir possíveis problemas.
 2. Cronometrar Casa → porta dos Projetos e ajustar escala/velocidade para cerca de 10 segundos.
 3. Melhorar fachadas e a legibilidade dos caminhos.
-4. Criar os interiores da Dachser e do Centro Tecnológico, mantendo os tetos separados.
-5. Implementar desvanecimento dos tetos ao entrar e destacar até três funcionalidades técnicas.
+4. Validar entrada, saída, quiosques e teto desvanecente do Centro Tecnológico.
+5. Construir o interior da Dachser e preparar o efeito equivalente.
+6. Aperfeiçoar materiais, interações e até três destaques técnicos.
 
 ## Autoria e recursos
 
