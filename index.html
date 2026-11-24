@@ -17,6 +17,15 @@ a{color:#9addff}footer a{pointer-events:auto}
 #player-hud p{margin:4px 0}#nav-status{font-weight:600}
 #crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;color:white;font:28px system-ui;text-shadow:0 0 4px #123}
 #fps-hint{position:absolute;bottom:65px;right:18px;max-width:300px;color:white;background:#14222de8;padding:10px;border-radius:9px;font:12px system-ui}
+#project-prompt{position:absolute;left:50%;bottom:105px;transform:translateX(-50%);padding:12px 20px;border:1px solid #6ad6ec9c;color:#fff;background:#142d43f2;border-radius:10px;font:600 14px system-ui;pointer-events:none;white-space:nowrap}
+.project-overlay{position:fixed;inset:0;background:#061323b8;display:grid;place-items:center;z-index:20;padding:24px}
+.project-card{width:min(540px,100%);color:#ecf6ff;background:#14283b;border:1px solid #65b8e5;border-radius:18px;padding:25px;box-shadow:0 20px 70px #0008}
+.project-card h2{font-size:26px;margin:0 0 8px}
+.project-card p{line-height:1.6}
+#project-subtitle{color:#8eddf6;font-weight:600}
+.project-buttons{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
+.project-buttons a,.project-buttons button{display:inline-block;border:1px solid #65b8e5;color:white;background:#24557b;border-radius:9px;padding:10px 15px;font:600 14px system-ui;text-decoration:none;cursor:pointer}
+.project-buttons button{background:#32404b}
 [hidden]{display:none!important}
 @media(max-width:650px){#player-hud{bottom:140px}.nav-actions{bottom:64px}#fps-hint{bottom:122px;right:8px;max-width:170px}}
 .scale-controls{position:absolute;top:18px;right:18px;display:flex;flex-direction:column;gap:7px;align-items:flex-end;color:white}
@@ -28,12 +37,24 @@ a{color:#9addff}footer a{pointer-events:auto}
 </head>
 <body>
 <canvas id="world" aria-label="Planta 3D do campus do portfólio"></canvas>
-<div class="panel"><h1>Campus 3D — Protótipo 02</h1><p>Casa → Jardim → Projetos. V alterna vista aérea / first-person; WASD anda, Shift corre, R reinicia. Clica no mundo para controlar o rato e Esc para o libertar.</p></div>
+<div class="panel"><h1>Campus 3D — Protótipo 03</h1><p>Casa → Jardim → Projetos. V alterna vista aérea / first-person; WASD anda, Shift corre, R reinicia. Clica no mundo para controlar o rato, Esc para o libertar e E para explorar projetos no Centro Tecnológico.</p></div>
 <div class="scale-controls"><button id="scale-toggle" type="button" aria-pressed="false">Mostrar pessoa (H)</button><div id="scale-status" role="status">Referência humana: oculta</div></div>
 <div class="nav-actions"><button id="view-toggle" type="button">Jogar em first-person (V)</button><button id="route-restart" type="button">Reiniciar percurso (R)</button></div>
 <div id="player-hud" hidden><p id="nav-status">Pronto para explorar</p><p>Tempo: <strong id="route-timer">0.0 s</strong> · Distância: <strong id="route-distance">—</strong></p></div>
 <div id="crosshair" hidden>+</div>
 <div id="fps-hint" hidden>Clica no cenário para ativar o rato. Esc liberta o cursor. Chega ao círculo verde junto à entrada dos Projetos.</div>
+<div id="project-prompt" hidden role="status">E — Explorar projeto</div>
+<div class="project-overlay" id="project-modal" hidden>
+  <section class="project-card" role="dialog" aria-modal="true" aria-labelledby="project-title">
+    <h2 id="project-title">Projeto</h2>
+    <div id="project-subtitle"></div>
+    <p id="project-description"></p>
+    <div class="project-buttons">
+      <a id="project-link" href="#" target="_blank" rel="noopener noreferrer">Abrir repositório</a>
+      <button id="project-close" type="button">Fechar (Esc)</button>
+    </div>
+  </section>
+</div>
 <footer>Three.js · Geometria procedural · <a href="./avatar.html">Ver protótipo do avatar</a></footer>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script type="module" src="./src/campus.js"></script>
