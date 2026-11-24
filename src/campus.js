@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createNavigation } from './navigation.js';
 
 // Primeiro protótipo do campus: volumes, caminhos e orientação.
 // Escala de referência: 1 unidade = 1 metro virtual. Norte = Z negativo.
-// A vista orbital atual não é first-person. A altura dos olhos será usada na FPV.
+// A vista aérea serve para depuração; a navegação FPV é implementada em navigation.js.
 const HUMAN = Object.freeze({
   height: 1.75, eyeHeight: 1.68,
   doorHeight: 2.15, doorWidth: 1.20,
@@ -43,6 +44,10 @@ const roofMat = mat('#707983'), dark = mat('#3c4b59'), white = mat('#f0e6ce');
 const water = mat('#64bce5', { metalness: .2, roughness: .15 }), trunk = mat('#70523b'), leaves = [mat('#4d8955'), mat('#66a368'), mat('#387349')];
 const blue = mat('#276eae', { emissive: '#124477', emissiveIntensity: .22 });
 const plants = mat('#4e874a');
+// Obstáculos simplificados em coordenadas do mundo (XZ).
+const obstacles = [];
+const addBoxObstacle=(x,z,w,d)=>obstacles.push({type:'box',x,z,w,d});
+const addCircleObstacle=(x,z,r)=>obstacles.push({type:'circle',x,z,r});
 
 function block(w,h,d,x,y,z,material,parent=scene,shadow=true) {
   const o = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), material);
@@ -68,6 +73,7 @@ function windows(x,z,w,d,height,floors=2){
   }
 }
 function structure(name,x,z,w,d,h,accent=roofMat,floors=2){
+  addBoxObstacle(x,z,w,d);
   block(w,h,d,x,h/2,z,building);
   block(w+.7,.45,d+.7,x,h+.24,z,accent);
   // Porta com altura humana: ainda não é um vão real transitável.
@@ -76,6 +82,8 @@ function structure(name,x,z,w,d,h,accent=roofMat,floors=2){
   label(name,x,h+.55,z,w*.85);
 }
 function tree(x,z,scale=1) {
+  // Colisão apenas com o tronco, não com toda a copa.
+  addCircleObstacle(x,z,.31*scale);
   // Árvores de parque: ~6 m de altura para escala 1, sem copa ao nível dos olhos.
   const trunkHeight=3.25*scale, canopyRadius=1.55*scale;
   const c=new THREE.Mesh(new THREE.CylinderGeometry(.19*scale,.29*scale,trunkHeight,7),trunk);
@@ -84,6 +92,7 @@ function tree(x,z,scale=1) {
   canopy.position.set(x,trunkHeight+canopyRadius*.85,z);canopy.castShadow=true;scene.add(canopy);
 }
 function billboard(title,x,z) {
+  addCircleObstacle(x,z,.14);
   // Base do painel a 2.2 m, para não obstruir a linha dos olhos.
   block(.12,3.3,.12,x,1.65,z,dark);
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;
@@ -111,6 +120,7 @@ plane(5,31,-17,8,pavement,.085);
 // Jardim central, fonte e bancos.
 plane(32,28,0,13,plants,.09);
 // Fonte: diâmetro 5 m; borda a 0.50 m, água pouco abaixo.
+addCircleObstacle(0,15,2.55);
 const fountainBase=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.55,HUMAN.fountainRimHeight,32),white);
 fountainBase.position.set(0,HUMAN.fountainRimHeight/2,15);fountainBase.castShadow=true;scene.add(fountainBase);
 const fountainWater=new THREE.Mesh(new THREE.CylinderGeometry(2.12,2.12,.05,32),water);
@@ -121,6 +131,7 @@ for(const [x,z] of [[-12,5],[-9,19],[11,7],[10,22],[-6,28],[7,30]]) tree(x,z,.85
 // Bancos: assento a 45 cm (antes ~81 cm), 1.60 x 0.43 m.
 const benchWood=mat('#846348');
 for(const [x,z] of [[-6,8],[7,8],[-7,25],[7,25]]) {
+  addBoxObstacle(x,z,HUMAN.benchLength,HUMAN.seatDepth);
   const seatThickness=.10;
   block(HUMAN.benchLength,seatThickness,HUMAN.seatDepth,x,HUMAN.seatHeight-seatThickness/2,z,benchWood);
   for(const side of [-1,1]) block(.09,HUMAN.seatHeight-seatThickness,.09,x+side*.61,(HUMAN.seatHeight-seatThickness)/2,z,trunk);
@@ -130,6 +141,7 @@ for(const [x,z] of [[-6,8],[7,8],[-7,25],[7,25]]) {
 
 // Casa: três edifícios unidos na zona inferior esquerda, ponto inicial.
 for(const [i,x] of [-1,0,1].map((i)=>[i,-19+i*6.4])){
+  addBoxObstacle(x,34,6.2,12);
   block(6.2,7.4,12,x,3.7,34,mat(['#c5b4a3','#b7c8c1','#d0b3a8'][i+1]));
   block(6.3,.55,12.3,x,7.7,34,mat('#995b4b'));
   block(HUMAN.doorWidth,HUMAN.doorHeight,.14,x,HUMAN.doorHeight/2,40.08,dark,scene,false);
@@ -180,9 +192,11 @@ const toggleCalibration=()=>{
   if(button)button.setAttribute('aria-pressed',String(humanReference.visible));
   if(humanReference.visible) {
     // Aproxima a vista à referência apenas na primeira ativação.
-    controls.target.set(-4,1,15);
-    camera.position.set(5,8,29);
-    controls.update();
+    if(controls.enabled){
+      controls.target.set(-4,1,15);
+      camera.position.set(5,8,29);
+      controls.update();
+    }
   }
 };
 document.querySelector('#scale-toggle')?.addEventListener('click',toggleCalibration);
@@ -198,6 +212,29 @@ controls.target.set(0,0,0); controls.enableDamping=true;
 controls.maxPolarAngle=Math.PI/2.03;
 controls.minDistance=18;controls.maxDistance=145;
 controls.update();
+
+// Meta fora do edifício: as paredes ainda não têm aberturas físicas.
+// A seta/círculo assinala a chegada à porta dos Projetos.
+const destination={x:20,z:3.8};
+const destinationMarker=new THREE.Mesh(
+  new THREE.RingGeometry(1.1,1.45,40),
+  new THREE.MeshBasicMaterial({color:0x28e4bd,side:THREE.DoubleSide,depthTest:false})
+);
+destinationMarker.rotation.x=-Math.PI/2;
+destinationMarker.position.set(destination.x,.18,destination.z);
+scene.add(destinationMarker);
+const navigation=createNavigation({
+  camera,canvas,controls,obstacles,
+  spawn:{x:-19,z:42},destination,eyeHeight:HUMAN.eyeHeight
+});
 function resize(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(canvas);resize();
-renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
+const clock=new THREE.Clock();
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(clock.getDelta(),.05);
+  navigation.update(dt);
+  if(navigation.getMode()==='aerial')controls.update();
+  destinationMarker.material.opacity=.68+.24*Math.sin(clock.elapsedTime*3);
+  destinationMarker.material.transparent=true;
+  renderer.render(scene,camera);
+});
