@@ -131,5 +131,5 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
     updateHud();
   }
   updateHud();
-  return { update, getMode:()=>mode, setMode };
+  return { update, getMode:()=>mode, getPlayerPosition:()=>player, setMode };
 }
