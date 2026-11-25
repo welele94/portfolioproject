@@ -5,7 +5,7 @@ import * as THREE from 'three';
 export function createProjectsHall({scene, obstacles}) {
   const cx=20, cz=-8, width=17, depth=20, height=9;
   const wallMaterial=new THREE.MeshStandardMaterial({color:0xdce5e9,roughness:.8});
-  const floorMaterial=new THREE.MeshStandardMaterial({color:0x71828b,roughness:.85});
+  const floorMaterial=new THREE.MeshStandardMaterial({color:0x222831,roughness:.82});
   const roofMaterial=new THREE.MeshStandardMaterial({
     color:0x2874ac,roughness:.7,transparent:true,opacity:1,depthWrite:false
   });
@@ -132,8 +132,100 @@ export function createProjectsHall({scene, obstacles}) {
     board.position.z=.061;frame.add(board);
     interactables.push({meshes:[board,backing],label:()=> 'Explorar '+p.title,activate:()=>p});
   }
-  const mainLight=new THREE.PointLight(0xe1f5ff,7,18);
-  mainLight.position.set(20,5,-8);scene.add(mainLight);
+  // Interior tech: revestimento independente para preservar a fachada.
+  const charcoal=new THREE.MeshStandardMaterial({color:0x11151e,roughness:.9});
+  const graphite=new THREE.MeshStandardMaterial({color:0x272e39,roughness:.75});
+  const metal=new THREE.MeshStandardMaterial({color:0x0d1118,metalness:.35,roughness:.45});
+  const rubber=new THREE.MeshStandardMaterial({color:0x080b10,roughness:1});
+  const neon=(color)=>new THREE.MeshBasicMaterial({color,toneMapped:false});
+  const cyan=neon(0x19dcff),purple=neon(0xa45bff),pink=neon(0xff459d);
+  solid(.045,8.9,19.5,11.75,4.5,-8,charcoal);
+  solid(.045,8.9,19.5,28.25,4.5,-8,charcoal);
+  solid(16.45,8.9,.045,20,4.5,-17.74,charcoal);
+  for(const x of [15.05,24.95])solid(7.06,8.9,.045,x,4.5,1.75,charcoal);
+  // Rodapés e linhas RGB altas, sem bloquear os quadros ou a entrada.
+  for(const x of [11.80,28.20]){
+    solid(.08,.16,19.45,x,.26,-8,graphite);
+    solid(.06,.065,19.35,x,3.65,-8,cyan);
+    solid(.06,.065,19.35,x,6.9,-8,purple);
+    for(const z of [-16,-8,0]){
+      solid(.10,3.05,.18,x,1.72,z,graphite);
+      solid(.12,2.85,.035,x,1.72,z, z===-8?pink:purple);
+    }
+  }
+  solid(16.3,.07,.07,20,3.65,-17.66,cyan);
+  solid(16.3,.07,.07,20,6.9,-17.66,purple);
+  // Juntas discretas do pavimento, sem colisão.
+  for(let x=12.5;x<28;x+=2)solid(.018,.005,19.4,x,.184,-8,metal);
+  for(let z=-17;z<2;z+=2)solid(16.4,.005,.018,20,.184,z,metal);
+  // Pórtico de entrada e painéis de parede de fundo.
+  for(const x of [18.35,21.65])solid(.08,2.4,.09,x,1.4,1.70,cyan);
+  solid(3.38,.06,.09,20,2.62,1.70,purple);
+  for(let x=12.2;x<28;x+=.48)solid(.14,2.0,.12,x,5.05,-17.60,graphite);
+  const labSign=new THREE.Mesh(new THREE.PlaneGeometry(6.4,1.1),new THREE.MeshBasicMaterial({map:signTexture('DEV LAB','CODE · CREATE · EXPLORE'),toneMapped:false}));
+  labSign.position.set(20,4.05,-17.48);scene.add(labSign);
+
+  // Texturas procedurais: terminais e editores fictícios, sem dependências.
+  function screenMaterial(kind){
+    const c=document.createElement('canvas');c.width=768;c.height=432;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#080e18';ctx.fillRect(0,0,768,432);
+    ctx.fillStyle='#202c3c';ctx.fillRect(0,0,768,34);
+    for(let i=0;i<3;i++){ctx.fillStyle=['#fa6e83','#ffcf70','#62dbad'][i];ctx.beginPath();ctx.arc(16+i*18,17,5,0,Math.PI*2);ctx.fill();}
+    ctx.font='17px monospace';ctx.fillStyle='#b8c8de';ctx.fillText(kind===0?'workspace / main.js':kind===1?'dev@lab: ~/projects':'SYSTEM MONITOR',95,23);
+    const lines=kind===0?['import * as THREE from "three";','','const scene = new THREE.Scene();','const camera = createCamera();','const renderer = createRenderer();','','function animate(dt) {','  world.update(dt);','  renderer.render(scene, camera);','}','','// build something new','export { scene, camera };']:kind===1?['$ npm run dev','[OK] Starting local workspace','[OK] Assets loaded','[OK] Scene initialized','','$ git status','On branch main','Working tree clean','','$ node diagnostics.js','[OK] Render pipeline ready','[OK] All systems online','dev@lab:~$ _']:['CPU / GPU TELEMETRY','=======================','CPU   [|||||||||     ]  64%','GPU   [|||||||||||   ]  78%','RAM   [||||||        ]  43%','','RENDER ENGINE: ONLINE','NETWORK: CONNECTED','BUILD: SUCCESS','','FRAME BUFFER: READY','STATUS: NOMINAL'];
+    for(let j=0;j<lines.length;j++){
+      ctx.fillStyle=kind===0?['#80d6ff','#c3a6ff','#9de7b5'][j%3]:kind===1?'#65e8a5':'#56d5ee';
+      ctx.fillText(lines[j],24,67+j*25);
+    }
+    const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;
+    return new THREE.MeshBasicMaterial({map:texture,toneMapped:false});
+  }
+  const screens=[screenMaterial(0),screenMaterial(1),screenMaterial(2)];
+  // Três estações de trabalho junto ao fundo, monitores voltados à entrada.
+  // Colisões só nos móveis ao nível do jogador.
+  for(let i=0;i<3;i++){
+    const x=15.3+i*4.7,z=-15.5;
+    const led=i===1?purple:cyan;
+    solid(3.55,.10,1.30,x,.94,z,graphite,true);
+    for(const dx of [-1.55,1.55])solid(.14,.84,1.08,x+dx,.55,z,metal);
+    solid(3.38,.035,.035,x,.87,z+.67,led);
+    // Dois monitores, com pé, moldura e conteúdo legível.
+    for(let j=0;j<2;j++){
+      const mx=x-.69+j*1.10,mz=z-.40;
+      solid(.42,.04,.27,mx,1.02,mz,metal);
+      solid(.09,.25,.09,mx,1.17,mz,metal);
+      solid(1.04,.62,.095,mx,1.57,mz,metal);
+      const display=new THREE.Mesh(new THREE.PlaneGeometry(.97,.55),screens[(i+j)%3]);
+      display.position.set(mx,1.57,mz+.051);scene.add(display);
+    }
+    // Torre com painel RGB, teclado e rato.
+    solid(.39,.73,.64,x+1.43,.56,z-.18,metal);
+    solid(.29,.54,.018,x+1.43,.58,z+.151,graphite);
+    for(const dy of [-.15,.11]){
+      const fan=new THREE.Mesh(new THREE.TorusGeometry(.102,.016,8,24),led);
+      fan.position.set(x+1.43,.58+dy,z+.166);scene.add(fan);
+    }
+    solid(.52,.035,.18,x-.15,1.015,z+.30,rubber);
+    for(let k=0;k<4;k++)for(let j=0;j<10;j++)solid(.043,.014,.032,x-.37+j*.048,1.039,z+.238+k*.043,graphite);
+    solid(.10,.045,.16,x+.43,1.025,z+.30,metal);
+    solid(.022,.008,.08,x+.43,1.05,z+.30,led);
+    // Cadeira de escritório virada para a secretária.
+    const chairZ=z+1.40;
+    solid(.61,.13,.62,x,.66,chairZ,rubber,true);
+    solid(.58,.76,.13,x,1.08,chairZ+.28,graphite);
+    solid(.10,.46,.10,x,.38,chairZ,metal);
+    solid(.68,.065,.095,x,.21,chairZ,metal);
+    solid(.095,.065,.68,x,.21,chairZ,metal);
+    for(const dx of [-.35,.35])solid(.09,.10,.48,x+dx,.94,chairZ,metal);
+  }
+  // Luzes locais coloridas, sem sombras adicionais pesadas.
+  for(const [x,z,color] of [[12.5,-7,0x15bfff],[27.5,-7,0x9b45ff],[20,-15,0x536bff]]){
+    const light=new THREE.PointLight(color,15,9,2);
+    light.position.set(x,3.4,z);scene.add(light);
+  }
+  const mainLight=new THREE.PointLight(0xa4c4ff,4,13);
+  mainLight.position.set(20,4.2,-8);scene.add(mainLight);
 
   // Quando o jogador entra (mesmo em vista aérea), o teto desaparece gradualmente.
   let target=1, opacity=1;
