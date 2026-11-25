@@ -309,7 +309,7 @@ renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),.05);
   if(!modal || modal.hidden)navigation.update(dt);
   const playerPosition=navigation.getPlayerPosition();
-  projectsHall.update(dt,playerPosition);
+  projectsHall.update(dt,playerPosition,navigation.getMode());
   const action=getInteraction();
   if(prompt){
     prompt.hidden=!action;

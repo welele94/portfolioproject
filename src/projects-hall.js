@@ -7,7 +7,7 @@ export function createProjectsHall({scene, obstacles}) {
   const wallMaterial=new THREE.MeshStandardMaterial({color:0xdce5e9,roughness:.8});
   const floorMaterial=new THREE.MeshStandardMaterial({color:0x222831,roughness:.82});
   const roofMaterial=new THREE.MeshStandardMaterial({
-    color:0x2874ac,roughness:.7,transparent:true,opacity:1,depthWrite:false
+    color:0x11151e,roughness:.85,transparent:false,opacity:1,depthWrite:true
   });
   const accent=new THREE.MeshStandardMaterial({color:0x36b8ec,emissive:0x124967,emissiveIntensity:.4});
   const stationMaterial=new THREE.MeshStandardMaterial({color:0x183149,roughness:.6});
@@ -219,6 +219,90 @@ export function createProjectsHall({scene, obstacles}) {
     solid(.095,.065,.68,x,.21,chairZ,metal);
     for(const dx of [-.35,.35])solid(.09,.10,.48,x+dx,.94,chairZ,metal);
   }
+  // Teto escuro com vigas e luminárias; ocultável em vista aérea.
+  const ceilingDetails=new THREE.Group();scene.add(ceilingDetails);
+  function ceilingPiece(w,h,d,x,y,z,material){
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+    mesh.position.set(x,y,z);ceilingDetails.add(mesh);return mesh;
+  }
+  for(const z of [-15,-10,-5,0]){
+    ceilingPiece(16.4,.24,.32,20,8.85,z,metal);
+    ceilingPiece(14.8,.045,.07,20,8.70,z,z===-10||z===0?purple:cyan);
+  }
+  // Ilha central expositiva: bancada, base recuada e iluminação inferior.
+  solid(4.7,.13,2.25,20,1.12,-6.8,graphite,true);
+  solid(4.15,.84,1.72,20,.61,-6.8,charcoal);
+  solid(4.25,.055,.045,20,.26,-5.92,cyan);
+  solid(4.25,.055,.045,20,.26,-7.68,purple);
+  for(const x of [17.89,22.11])solid(.045,.055,1.76,x,.26,-6.8,purple);
+  // Maquete de avião comercial, referência visual ao NextSeat.
+  const aircraft=new THREE.Group();aircraft.position.set(18.9,1.78,-6.8);scene.add(aircraft);
+  const fuselageMat=new THREE.MeshStandardMaterial({color:0xe5eaf2,metalness:.18,roughness:.42});
+  const aircraftBlue=new THREE.MeshStandardMaterial({color:0x3179be,roughness:.5});
+  function airMesh(geometry,material,x,y,z){
+    const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.castShadow=true;aircraft.add(mesh);return mesh;
+  }
+  const body=airMesh(new THREE.CapsuleGeometry(.125,1.28,6,16),fuselageMat,0,0,0);
+  body.rotation.z=Math.PI/2;
+  function wing(points,material,y){
+    const shape=new THREE.Shape();shape.moveTo(points[0][0],points[0][1]);
+    for(const p of points.slice(1))shape.lineTo(p[0],p[1]);shape.closePath();
+    const mesh=airMesh(new THREE.ExtrudeGeometry(shape,{depth:.035,bevelEnabled:false}),material,0,y,0);
+    mesh.rotation.x=-Math.PI/2;
+  }
+  for(const side of [-1,1]){
+    wing([[.25,0],[-.32,side*.66],[-.53,side*.66],[-.25,0]],fuselageMat,-.035);
+    wing([[-.49,0],[-.72,side*.29],[-.79,side*.29],[-.74,0]],aircraftBlue,.025);
+    const engine=airMesh(new THREE.CylinderGeometry(.067,.067,.25,16),aircraftBlue,-.04,-.09,side*.32);
+    engine.rotation.z=Math.PI/2;
+    for(let k=0;k<9;k++)airMesh(new THREE.BoxGeometry(.042,.036,.018),metal,-.47+k*.105,.035,side*.119);
+  }
+  const finShape=new THREE.Shape();finShape.moveTo(-.75,0);finShape.lineTo(-.70,.30);finShape.lineTo(-.52,.30);finShape.lineTo(-.40,0);finShape.closePath();
+  airMesh(new THREE.ExtrudeGeometry(finShape,{depth:.035,bevelEnabled:false}),aircraftBlue,0,.04,-.0175);
+  airMesh(new THREE.SphereGeometry(.064,12,8),metal,.60,.075,0);
+  solid(.48,.055,.48,18.9,1.215,-6.8,metal);
+  solid(.055,.50,.055,18.9,1.49,-6.8,graphite);
+  // Puzzle de lógica tipo torre de Hanói (expositivo nesta fase).
+  solid(1.35,.09,.75,21.15,1.23,-6.8,metal);
+  const diskMats=[cyan,purple,pink,graphite];
+  for(let k=0;k<3;k++)solid(.045,.48,.045,20.75+k*.40,1.51,-6.8,graphite);
+  for(let k=0;k<4;k++){
+    const disk=new THREE.Mesh(new THREE.CylinderGeometry(.18-k*.034,.18-k*.034,.075,28),diskMats[k]);
+    disk.position.set(20.75,1.32+k*.077,-6.8);scene.add(disk);
+  }
+  // Rack de rede 42U estilizado: patch panels, switches, UPS e cablagem.
+  // Localização afastada das paredes dos projetos e da entrada.
+  const rx=24.65,rz=-9.2;
+  solid(.86,2.22,.92,rx,1.29,rz,metal,true);
+  solid(.67,2.04,.025,rx,1.29,rz+.472,charcoal);
+  for(const dx of [-.37,.37])solid(.07,2.15,.055,rx+dx,1.29,rz+.50,graphite);
+  const green=neon(0x54f19a),amber=neon(0xffc76a);
+  function rackUnit(y,h,material){
+    solid(.64,h,.055,rx,y,rz+.50,material);
+    for(const dx of [-.29,.29])solid(.025,.025,.012,rx+dx,y,rz+.535,graphite);
+  }
+  for(const y of [2.12,1.94,1.76,1.58]){
+    rackUnit(y,.135,graphite);
+    for(let k=0;k<12;k++){
+      const px=rx-.255+k*.045;
+      solid(.032,.047,.012,px,y,rz+.535,rubber);
+      solid(.018,.009,.013,px,y+.039,rz+.54,k%5===0?amber:green);
+    }
+  }
+  for(const y of [1.34,1.17,.99]){rackUnit(y,.13,metal);for(let k=0;k<8;k++)solid(.047,.014,.012,rx-.20+k*.055,y,rz+.535,graphite);}
+  rackUnit(.67,.36,graphite);
+  solid(.21,.09,.012,rx-.10,.70,rz+.535,cyan);
+  solid(.045,.045,.016,rx+.18,.70,rz+.54,green);
+  rackUnit(.35,.16,metal);
+  for(let k=0;k<5;k++){
+    const px=rx-.23+k*.09;
+    const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(px,2.12,rz+.55),new THREE.Vector3(px-.05,2.04,rz+.68),new THREE.Vector3(px+.025,1.85,rz+.67),new THREE.Vector3(px+.045,1.76,rz+.55)]);
+    const cable=new THREE.Mesh(new THREE.TubeGeometry(curve,12,.012,6,false),k%2?purple:cyan);scene.add(cable);
+  }
+  // Luz de estado e identificação.
+  const rackLabel=new THREE.Mesh(new THREE.PlaneGeometry(.61,.15),new THREE.MeshBasicMaterial({map:signTexture('NETWORK','SWITCH · UPS'),toneMapped:false}));
+  rackLabel.position.set(rx,2.34,rz+.54);scene.add(rackLabel);
+
   // Luzes locais coloridas, sem sombras adicionais pesadas.
   for(const [x,z,color] of [[12.5,-7,0x15bfff],[27.5,-7,0x9b45ff],[20,-15,0x536bff]]){
     const light=new THREE.PointLight(color,15,9,2);
@@ -227,19 +311,15 @@ export function createProjectsHall({scene, obstacles}) {
   const mainLight=new THREE.PointLight(0xa4c4ff,4,13);
   mainLight.position.set(20,4.2,-8);scene.add(mainLight);
 
-  // Quando o jogador entra (mesmo em vista aérea), o teto desaparece gradualmente.
-  let target=1, opacity=1;
-  function update(dt,position){
+  // O teto permanece fechado em primeira pessoa; apenas a vista aérea permite inspeção.
+  function update(dt,position,mode='first'){
     const targetAngle=doorOpen?Math.PI/2:0;
     const next=angle+Math.sign(targetAngle-angle)*Math.min(Math.abs(targetAngle-angle),dt*2.2);
     // Não empurrar nem prender o jogador durante a animação.
     if(!touchesDoor(position,next)){angle=next;syncDoor(angle);}
     const inside=position.x>11.7 && position.x<28.3 && position.z>-17.75 && position.z<1.85;
-    target=inside?.025:1;
-    const k=1-Math.exp(-dt*3);
-    opacity+=(target-opacity)*k;
-    roofMaterial.opacity=opacity;
-    roof.visible=opacity>.035;
+    roof.visible=mode!=='aerial'||!inside;
+    ceilingDetails.visible=roof.visible;
     return inside;
   }
   return {update,projects,interactables};
