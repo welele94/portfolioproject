@@ -20,6 +20,7 @@ a{color:#9addff}footer a{pointer-events:auto}
 #project-prompt{position:absolute;left:50%;bottom:105px;transform:translateX(-50%);padding:12px 20px;border:1px solid #6ad6ec9c;color:#fff;background:#142d43f2;border-radius:10px;font:600 14px system-ui;pointer-events:none;white-space:nowrap}
 .project-overlay{position:fixed;inset:0;background:#061323b8;display:grid;place-items:center;z-index:20;padding:24px}
 .project-card{width:min(540px,100%);color:#ecf6ff;background:#14283b;border:1px solid #65b8e5;border-radius:18px;padding:25px;box-shadow:0 20px 70px #0008}
+#project-image{display:block;width:100%;max-height:32vh;object-fit:contain;background:#0e1d2c;border-radius:8px;margin:12px 0}.project-card{max-height:90dvh;overflow:auto}
 .project-card h2{font-size:26px;margin:0 0 8px}
 .project-card p{line-height:1.6}
 #project-subtitle{color:#8eddf6;font-weight:600}
@@ -37,7 +38,7 @@ a{color:#9addff}footer a{pointer-events:auto}
 </head>
 <body>
 <canvas id="world" aria-label="Planta 3D do campus do portfólio"></canvas>
-<div class="panel"><h1>Campus 3D — Protótipo 04</h1><p>Casa → Jardim → Projetos. V alterna vista aérea / first-person; WASD anda, Shift corre, R reinicia. Clica no mundo para controlar o rato, Esc para o libertar e E para abrir/fechar portas e explorar projetos no Centro Tecnológico.</p></div>
+<div class="panel"><h1>Campus 3D — Protótipo 05</h1><p>Casa → Jardim → Projetos. V alterna vista aérea / first-person; WASD anda, Shift corre, R reinicia. Clica no mundo para controlar o rato, Esc para o libertar e E para abrir/fechar portas e explorar projetos no Centro Tecnológico.</p></div>
 <div class="scale-controls"><button id="scale-toggle" type="button" aria-pressed="false">Mostrar pessoa (H)</button><div id="scale-status" role="status">Referência humana: oculta</div></div>
 <div class="nav-actions"><button id="view-toggle" type="button">Jogar em first-person (V)</button><button id="route-restart" type="button">Reiniciar percurso (R)</button></div>
 <div id="player-hud" hidden><p id="nav-status">Pronto para explorar</p><p>Tempo: <strong id="route-timer">0.0 s</strong> · Distância: <strong id="route-distance">—</strong></p></div>
@@ -48,6 +49,7 @@ a{color:#9addff}footer a{pointer-events:auto}
   <section class="project-card" role="dialog" aria-modal="true" aria-labelledby="project-title">
     <h2 id="project-title">Projeto</h2>
     <div id="project-subtitle"></div>
+    <img id="project-image" alt="" hidden>
     <p id="project-description"></p>
     <div class="project-buttons">
       <a id="project-link" href="#" target="_blank" rel="noopener noreferrer">Abrir repositório</a>

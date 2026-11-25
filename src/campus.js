@@ -175,11 +175,11 @@ for(const [i,x] of [-1,0,1].map((i)=>[i,-19+i*6.4])){
 }
 label('CASA',-19,8.4,34,14);
 
-// Centro Tecnológico: paredes reais com abertura transitável, três quiosques
+// Centro Tecnológico: paredes reais com abertura transitável, quatro quadros
 // interativos e teto separado, sem o antigo bloco maciço.
 const projectsHall=createProjectsHall({scene,obstacles});
-billboard('Geneva Drive',8,-5);
-billboard('Help! App',8,6);
+billboard('Galeria de Projetos',8,-5);
+billboard('Centro Tecnológico',8,6);
 billboard('One more thing...',8,28);
 
 // UAb: inferior direita.
@@ -261,6 +261,7 @@ const title=document.querySelector('#project-title');
 const subtitle=document.querySelector('#project-subtitle');
 const description=document.querySelector('#project-description');
 const projectLink=document.querySelector('#project-link');
+const projectImage=document.querySelector('#project-image');
 const raycaster=new THREE.Raycaster();
 const targets=new Map();
 for(const action of projectsHall.interactables)
@@ -285,6 +286,7 @@ function openProject(project){
   subtitle.textContent=project.subtitle;
   description.textContent=project.detail;
   projectLink.href=project.url;
+  if(projectImage){projectImage.hidden=true;projectImage.removeAttribute('src');if(project.image){projectImage.alt=project.title;projectImage.onload=()=>{projectImage.hidden=false;};projectImage.onerror=()=>{projectImage.hidden=true;};projectImage.src=project.image;}}
   modal.hidden=false;
   navigation.setPaused(true);
   projectLink.textContent=project.url.includes('codepen.io')?'Abrir no CodePen':'Abrir no GitHub';

@@ -11,9 +11,6 @@ export function createProjectsHall({scene, obstacles}) {
   });
   const accent=new THREE.MeshStandardMaterial({color:0x36b8ec,emissive:0x124967,emissiveIntensity:.4});
   const stationMaterial=new THREE.MeshStandardMaterial({color:0x183149,roughness:.6});
-  const panelMaterial=new THREE.MeshStandardMaterial({color:0x1b3656,emissive:0x0a1e39,emissiveIntensity:.4});
-  const white=new THREE.MeshStandardMaterial({color:0xf4f1e9});
-  const interiorLights=[];
   function solid(w,h,d,x,y,z,material,collision=false) {
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
     mesh.position.set(x,y,z);
@@ -91,22 +88,49 @@ export function createProjectsHall({scene, obstacles}) {
   nameSign.position.set(cx,5.6,2.27);scene.add(nameSign);
 
   const interactables=[doorAction];
+  // Galeria: quatro quadros à altura dos olhos, dois em cada parede lateral.
   const projects=[
-    {title:'Help! App',subtitle:'Aplicação de apoio e motivação',detail:'Aplicação desenvolvida para explorar programação orientada a objetos, persistência e interface. Projeto académico em evolução.',url:'https://github.com/welele94/help_app',x:15.1,z:-7.3},
-    {title:'Geneva Drive',subtitle:'Animação e computação gráfica',detail:'Estudo e implementação de um mecanismo de engrenagens e cruz de Malta em Three.js, com medição de movimentos, luz e câmara.',url:'https://github.com/welele94/efoliocomputacaografia2627',x:20,z:-13.1},
-    {title:'PortfolioProject',subtitle:'Este mundo em Three.js',detail:'Portfólio interativo com navegação 3D em tempo real, colisões, ambientes e transições de teto. Evolução e documentação no GitHub.',url:'https://github.com/welele94/portfolioproject',x:24.9,z:-7.3}
+    {title:'Buddha Club',subtitle:'Onde tudo começou',detail:'O meu primeiro projeto, desenvolvido antes de utilizar inteligência artificial. Um trabalho de que me orgulho especialmente.',url:'https://codepen.io/eutudo94/full/jOZJgKL',image:'./images/buddhaclub.png',x:11.78,z:-4,rotation:Math.PI/2},
+    {title:'Hunt Red',subtitle:'Projeto web',detail:'Um projeto de desenvolvimento web disponível no CodePen.',url:'https://codepen.io/eutudo94/full/MWLVRLM',image:'./images/huntred.png',x:11.78,z:-12,rotation:Math.PI/2},
+    {title:'NextSeat',subtitle:'Projeto de aplicação',detail:'Projeto de desenvolvimento de uma aplicação. O código-fonte está disponível no GitHub.',url:'https://github.com/welele94/NextSeatProject',image:'./images/nextseat.png',x:28.22,z:-4,rotation:-Math.PI/2},
+    {title:'Help!',subtitle:'Aplicação de apoio e motivação',detail:'Projeto académico de programação orientada a objetos, persistência e interface, com atenção aos princípios SOLID.',url:'https://github.com/welele94/help_app',x:28.22,z:-12,rotation:-Math.PI/2}
   ];
+  const frameMaterial=new THREE.MeshStandardMaterial({color:0x263440,roughness:.8});
+  const loader=new THREE.TextureLoader();
+  function artwork(p){
+    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=768;
+    const ctx=canvas.getContext('2d');
+    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+    function draw(image){
+      ctx.fillStyle='#f5f3ed';ctx.fillRect(0,0,1024,768);
+      ctx.fillStyle='#182d42';ctx.fillRect(32,32,960,570);
+      if(image){
+        const scale=Math.min(960/image.width,570/image.height);
+        const w=image.width*scale,h=image.height*scale;
+        ctx.drawImage(image,512-w/2,317-h/2,w,h);
+      }else{
+        ctx.fillStyle='#fff';ctx.font='bold 100px system-ui';ctx.textAlign='center';
+        ctx.fillText(p.title,512,340,880);
+      }
+      ctx.textAlign='center';ctx.fillStyle='#182d42';ctx.font='bold 54px system-ui';
+      ctx.fillText(p.title,512,671,940);
+      ctx.font='30px system-ui';ctx.fillText(p.subtitle,512,725,940);
+      texture.needsUpdate=true;
+    }
+    draw(null);
+    if(p.image)loader.load(p.image,t=>{draw(t.image);t.dispose();},undefined,()=>{});
+    return texture;
+  }
   for(const p of projects){
-    solid(3.6,.85,2.1,p.x,.5,p.z,stationMaterial,true);
-    solid(3.2,.12,1.9,p.x,1.02,p.z,accent);
-    const board=new THREE.Mesh(new THREE.PlaneGeometry(3.4,1.7),
-      new THREE.MeshBasicMaterial({map:signTexture(p.title,p.subtitle),side:THREE.DoubleSide}));
-    board.position.set(p.x,2.35,p.z-.65);
-    scene.add(board);
-    interactables.push({meshes:[board],label:()=> 'Explorar '+p.title,activate:()=>p});
-    solid(.16,1.25,.16,p.x,1.67,p.z-.7,stationMaterial);
-    const spotlight=new THREE.PointLight(0x7acfff,4,7);
-    spotlight.position.set(p.x,4.1,p.z);scene.add(spotlight);interiorLights.push(spotlight);
+    const frame=new THREE.Group();
+    frame.position.set(p.x,1.85,p.z);frame.rotation.y=p.rotation;
+    scene.add(frame);
+    const backing=new THREE.Mesh(new THREE.BoxGeometry(3.35,2.55,.10),frameMaterial);
+    frame.add(backing);
+    const board=new THREE.Mesh(new THREE.PlaneGeometry(3.20,2.40),
+      new THREE.MeshBasicMaterial({map:artwork(p),toneMapped:false}));
+    board.position.z=.061;frame.add(board);
+    interactables.push({meshes:[board,backing],label:()=> 'Explorar '+p.title,activate:()=>p});
   }
   const mainLight=new THREE.PointLight(0xe1f5ff,7,18);
   mainLight.position.set(20,5,-8);scene.add(mainLight);
@@ -126,11 +150,5 @@ export function createProjectsHall({scene, obstacles}) {
     roof.visible=opacity>.035;
     return inside;
   }
-  function nearest(position){
-    const inside=position.x>11.7 && position.x<28.3 && position.z>-17.75 && position.z<1.85;
-    if(!inside)return null;
-    const near=projects.map(p=>({p,dist:Math.hypot(position.x-p.x,position.z-p.z)})).sort((a,b)=>a.dist-b.dist)[0];
-    return near?.dist<=2.7?near.p:null;
-  }
-  return {update,nearest,projects,interactables};
+  return {update,projects,interactables};
 }
