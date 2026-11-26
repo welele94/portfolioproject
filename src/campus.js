@@ -210,24 +210,36 @@ function addGardenPlants(){
     return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.32:Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3);
   }
   const dummy=new THREE.Object3D(),color=new THREE.Color();
-  // Três lâminas curvas/triangulares por tufo, cruzadas e visíveis de ambos os lados.
+  // Relva curta e fina, com variações de tamanho e orientação.
   const positions=[];
-  for(let k=0;k<5;k++){
-    const a=k*2.39996,dx=Math.cos(a),dz=Math.sin(a),w=.022,h=.12+(k%3)*.035;
-    positions.push(-dz*w,0,dx*w,dz*w,0,-dx*w,dx*.055,h,dz*.055);
+  // Folhas estreitas, curvas em dois segmentos, com base larga apenas alguns milímetros.
+  for(let k=0;k<7;k++){
+    const a=k*2.39996,dx=Math.cos(a),dz=Math.sin(a);
+    const w=.0045+(k%3)*.0008,h=.055+(k%4)*.012,lean=.018+(k%3)*.008;
+    const bx=dx*.012,bz=dz*.012;
+    const L=[bx-dz*w,0,bz+dx*w],R=[bx+dz*w,0,bz-dx*w];
+    const M1=[bx+dx*lean*.32-dz*w*.62,h*.58,bz+dz*lean*.32+dx*w*.62];
+    const M2=[bx+dx*lean*.32+dz*w*.62,h*.58,bz+dz*lean*.32-dx*w*.62];
+    const T=[bx+dx*lean,h,bz+dz*lean];
+    positions.push(...L,...R,...M1,...R,...M2,...M1,...M1,...M2,...T);
   }
   const blades=new THREE.BufferGeometry();blades.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));blades.computeVertexNormals();
-  const grass=new THREE.InstancedMesh(blades,new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,side:THREE.DoubleSide}),9000);
+  // Normais orientadas para cima evitam o brilho artificial das faces verticais.
+  const normals=blades.attributes.normal;
+  for(let k=0;k<normals.count;k++)normals.setXYZ(k,0,1,0);
+  normals.needsUpdate=true;
+  const grass=new THREE.InstancedMesh(blades,new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,side:THREE.DoubleSide}),24000);
   grass.userData.decoration=true;
   let n=0;
-  for(let attempt=0;attempt<22000&&n<9000;attempt++){
+  for(let attempt=0;attempt<85000&&n<24000;attempt++){
     const x=-27+rand()*54,z=-42+rand()*84;
     if(!clear(x,z))continue;
-    const density=.55+.23*Math.sin(x*.71+Math.cos(z*.32))+.18*Math.cos(z*.93+x*.29);
+    const density=.72+.12*Math.sin(x*.71+Math.cos(z*.32))+.10*Math.cos(z*.93+x*.29);
     if(rand()>density)continue;
-    const size=.6+rand()*.85;
+    const size=.65+rand()*.65;
     dummy.position.set(x,.025,z);dummy.rotation.set(0,rand()*Math.PI*2,0);dummy.scale.set(size,size,size);dummy.updateMatrix();
-    grass.setMatrixAt(n,dummy.matrix);color.setHSL(.23+rand()*.065,.34+rand()*.24,.20+rand()*.15);grass.setColorAt(n++,color);
+    grass.setMatrixAt(n,dummy.matrix);
+    color.setHSL(.24+rand()*.045,.48+rand()*.15,.105+rand()*.055);grass.setColorAt(n++,color);
   }
   grass.count=n;grass.instanceMatrix.needsUpdate=true;if(grass.instanceColor)grass.instanceColor.needsUpdate=true;grass.computeBoundingSphere();scene.add(grass);
   // Pequenos grupos de flores silvestres, margaridas e flores lilases.
