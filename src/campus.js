@@ -120,8 +120,10 @@ for(let z=-36;z<=36;z+=6)for(const x of [-30,30])plane(.09,2.2,x,z,roadPaint,.09
 // Jardim e rede pedonal contínua. O pavimento fica acima da relva.
 // O jardim usa o mesmo terreno contínuo; sem placa sobreposta nem fronteira reta.
 const pathWidth=3;
+const pedestrianAreas=[];
 function walk(x1,z1,x2,z2,width=pathWidth){
   if(x1!==x2&&z1!==z2)throw new Error('Segmento pedonal deve ser axial');
+  pedestrianAreas.push({x:(x1+x2)/2,z:(z1+z2)/2,w:Math.abs(x2-x1)+width,d:Math.abs(z2-z1)+width});
   plane(Math.abs(x2-x1)+width,Math.abs(z2-z1)+width,
     (x1+x2)/2,(z1+z2)/2,pavement,.125);
 }
@@ -195,6 +197,64 @@ structure('APARTAMENTOS',21,-34,14,12,11,roofMat,4);
 // Árvores periféricas.
 for(let z=-41;z<=41;z+=8){ tree(-27,z,.85); if(z>20||z< -22)tree(27,z,.85); }
 for(let x=-25;x<=25;x+=8)tree(x,-41,.9);
+
+// Vegetação baixa: distribuição determinística em manchas, sem colisões.
+function addGardenPlants(){
+  let seed=84621;
+  function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
+  const buildings=[[-19,34,19,12],[20,34,16,13],[0,-33,24,13],[20,-8,17,20],[-20,-11,12,21],[21,-34,14,12]];
+  function clear(x,z){
+    if(Math.abs(x)>27.5||Math.abs(z)>42)return false;
+    if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.5&&Math.abs(z-Z)<D/2+.5))return false;
+    if(pedestrianAreas.some(p=>Math.abs(x-p.x)<p.w/2+.18&&Math.abs(z-p.z)<p.d/2+.18))return false;
+    return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.32:Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3);
+  }
+  const dummy=new THREE.Object3D(),color=new THREE.Color();
+  // Três lâminas curvas/triangulares por tufo, cruzadas e visíveis de ambos os lados.
+  const positions=[];
+  for(let k=0;k<5;k++){
+    const a=k*2.39996,dx=Math.cos(a),dz=Math.sin(a),w=.022,h=.12+(k%3)*.035;
+    positions.push(-dz*w,0,dx*w,dz*w,0,-dx*w,dx*.055,h,dz*.055);
+  }
+  const blades=new THREE.BufferGeometry();blades.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));blades.computeVertexNormals();
+  const grass=new THREE.InstancedMesh(blades,new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,side:THREE.DoubleSide}),9000);
+  grass.userData.decoration=true;
+  let n=0;
+  for(let attempt=0;attempt<22000&&n<9000;attempt++){
+    const x=-27+rand()*54,z=-42+rand()*84;
+    if(!clear(x,z))continue;
+    const density=.55+.23*Math.sin(x*.71+Math.cos(z*.32))+.18*Math.cos(z*.93+x*.29);
+    if(rand()>density)continue;
+    const size=.6+rand()*.85;
+    dummy.position.set(x,.025,z);dummy.rotation.set(0,rand()*Math.PI*2,0);dummy.scale.set(size,size,size);dummy.updateMatrix();
+    grass.setMatrixAt(n,dummy.matrix);color.setHSL(.23+rand()*.065,.34+rand()*.24,.20+rand()*.15);grass.setColorAt(n++,color);
+  }
+  grass.count=n;grass.instanceMatrix.needsUpdate=true;if(grass.instanceColor)grass.instanceColor.needsUpdate=true;grass.computeBoundingSphere();scene.add(grass);
+  // Pequenos grupos de flores silvestres, margaridas e flores lilases.
+  const flowers=[];
+  const centers=[[-5,12],[-4,20],[9,16],[12,21],[-13,8],[-6,28],[7,30],[11,8],[-5,4],[12,1],[-13,19],[3,-13],[-5,-18]];
+  for(const [cx,cz] of centers)for(let k=0;k<42;k++){
+    const a=rand()*Math.PI*2,r=Math.sqrt(rand())*1.65,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r;
+    if(clear(x,z))flowers.push({x,z,h:.12+rand()*.18,size:.7+rand()*.65,kind:Math.floor(rand()*5),a:rand()*Math.PI*2});
+  }
+  const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.008,.010,1,5),new THREE.MeshStandardMaterial({color:0x527b36,roughness:1}),flowers.length);
+  const petals=new THREE.InstancedMesh(new THREE.SphereGeometry(1,7,5),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85}),flowers.length*5);
+  const hearts=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,5),new THREE.MeshStandardMaterial({color:0xf3be38,roughness:.8}),flowers.length);
+  const palette=[0xfff4dd,0xfff7ef,0xf4c448,0xb18ce3,0xe9a4c5];
+  flowers.forEach((f,i)=>{
+    dummy.rotation.set(0,0,0);dummy.position.set(f.x,.025+f.h/2,f.z);dummy.scale.set(1,f.h,1);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);
+    const y=.025+f.h;
+    dummy.position.set(f.x,y+.008,f.z);dummy.scale.set(.018*f.size,.012*f.size,.018*f.size);dummy.updateMatrix();hearts.setMatrixAt(i,dummy.matrix);
+    for(let k=0;k<5;k++){
+      const a=f.a+k*Math.PI*2/5;
+      dummy.position.set(f.x+Math.cos(a)*.027*f.size,y,f.z+Math.sin(a)*.027*f.size);
+      dummy.rotation.set(0,-a,0);dummy.scale.set(.027*f.size,.008*f.size,.014*f.size);dummy.updateMatrix();
+      petals.setMatrixAt(i*5+k,dummy.matrix);petals.setColorAt(i*5+k,color.setHex(palette[f.kind]));
+    }
+  });
+  for(const mesh of [stems,petals,hearts]){mesh.userData.decoration=true;mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();scene.add(mesh);}
+}
+addGardenPlants();
 
 // Referência de escala: H mostra/esconde silhueta de 1.75 m no jardim.
 const humanReference=new THREE.Group();
@@ -275,7 +335,7 @@ function getInteraction(){
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
   raycaster.far=3;
-  const hit=raycaster.intersectObjects(scene.children,true).find(h=>h.object.visible&&h.object.material?.depthTest!==false);
+  const hit=raycaster.intersectObjects(scene.children.filter(o=>!o.userData.decoration),true).find(h=>h.object.visible&&h.object.material?.depthTest!==false);
   return hit?targets.get(hit.object)||null:null;
 }
 function closeProject(){
