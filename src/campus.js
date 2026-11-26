@@ -199,6 +199,35 @@ for(let z=-41;z<=41;z+=8){ tree(-27,z,.85); if(z>20||z< -22)tree(27,z,.85); }
 for(let x=-25;x<=25;x+=8)tree(x,-41,.9);
 
 // Vegetação baixa: distribuição determinística em manchas, sem colisões.
+const gardenWindTime={value:0};
+// Deslocamento em coordenadas do mundo: a base mantém-se fixa e as pontas ondulam.
+// Usado em todas as peças das flores, com a mesma altura de referência.
+function windMaterial(material){
+  material.onBeforeCompile=shader=>{
+    shader.uniforms.uGardenTime=gardenWindTime;
+    shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
+uniform float uGardenTime;
+`);
+    shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`
+vec4 mvPosition=vec4(transformed,1.0);
+#ifdef USE_INSTANCING
+  mvPosition=instanceMatrix*mvPosition;
+  vec3 plantWorld=(modelMatrix*mvPosition).xyz;
+  float heightAboveGround=max(0.0,plantWorld.y-0.025);
+  float phase=plantWorld.x*0.58+plantWorld.z*0.34;
+  float gust=0.65+0.35*sin(uGardenTime*0.72+plantWorld.z*0.23);
+  float sway=sin(phase-uGardenTime*1.65)*0.65+sin(phase*1.8-uGardenTime*2.35)*0.22;
+  float bend=heightAboveGround*heightAboveGround*gust;
+  mvPosition.x+=bend*(0.28+0.65*sway);
+  mvPosition.z+=bend*(0.15+0.34*sway);
+#endif
+mvPosition=modelViewMatrix*mvPosition;
+gl_Position=projectionMatrix*mvPosition;
+`);
+  };
+  material.customProgramCacheKey=()=> 'garden-wind-v1';
+  return material;
+}
 function addGardenPlants(){
   let seed=84621;
   function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
@@ -206,17 +235,17 @@ function addGardenPlants(){
   function clear(x,z){
     if(Math.abs(x)>27.5||Math.abs(z)>42)return false;
     if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.5&&Math.abs(z-Z)<D/2+.5))return false;
-    if(pedestrianAreas.some(p=>Math.abs(x-p.x)<p.w/2+.18&&Math.abs(z-p.z)<p.d/2+.18))return false;
+    if(pedestrianAreas.some(p=>Math.abs(x-p.x)<p.w/2+.45&&Math.abs(z-p.z)<p.d/2+.45))return false;
     return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.32:Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3);
   }
   const dummy=new THREE.Object3D(),color=new THREE.Color();
-  // Relva curta e fina, com variações de tamanho e orientação.
+  // Relva alta de prado, com folhas estreitas e curvadas.
   const positions=[];
   // Folhas estreitas, curvas em dois segmentos, com base larga apenas alguns milímetros.
   for(let k=0;k<7;k++){
     const a=k*2.39996,dx=Math.cos(a),dz=Math.sin(a);
-    const w=.0045+(k%3)*.0008,h=.055+(k%4)*.012,lean=.018+(k%3)*.008;
-    const bx=dx*.012,bz=dz*.012;
+    const w=.006+(k%3)*.0015,h=.26+(k%4)*.045,lean=.055+(k%3)*.025;
+    const bx=dx*.027,bz=dz*.027;
     const L=[bx-dz*w,0,bz+dx*w],R=[bx+dz*w,0,bz-dx*w];
     const M1=[bx+dx*lean*.32-dz*w*.62,h*.58,bz+dz*lean*.32+dx*w*.62];
     const M2=[bx+dx*lean*.32+dz*w*.62,h*.58,bz+dz*lean*.32-dx*w*.62];
@@ -228,7 +257,7 @@ function addGardenPlants(){
   const normals=blades.attributes.normal;
   for(let k=0;k<normals.count;k++)normals.setXYZ(k,0,1,0);
   normals.needsUpdate=true;
-  const grass=new THREE.InstancedMesh(blades,new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,side:THREE.DoubleSide}),24000);
+  const grass=new THREE.InstancedMesh(blades,windMaterial(new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,side:THREE.DoubleSide})),24000);
   grass.userData.decoration=true;
   let n=0;
   for(let attempt=0;attempt<85000&&n<24000;attempt++){
@@ -236,22 +265,22 @@ function addGardenPlants(){
     if(!clear(x,z))continue;
     const density=.72+.12*Math.sin(x*.71+Math.cos(z*.32))+.10*Math.cos(z*.93+x*.29);
     if(rand()>density)continue;
-    const size=.65+rand()*.65;
+    const size=.82+rand()*.48+(rand()<.10?.22:0);
     dummy.position.set(x,.025,z);dummy.rotation.set(0,rand()*Math.PI*2,0);dummy.scale.set(size,size,size);dummy.updateMatrix();
     grass.setMatrixAt(n,dummy.matrix);
-    color.setHSL(.24+rand()*.045,.48+rand()*.15,.105+rand()*.055);grass.setColorAt(n++,color);
+    color.setHSL(.225+rand()*.065,.42+rand()*.19,.12+rand()*.075);grass.setColorAt(n++,color);
   }
-  grass.count=n;grass.instanceMatrix.needsUpdate=true;if(grass.instanceColor)grass.instanceColor.needsUpdate=true;grass.computeBoundingSphere();scene.add(grass);
+  grass.count=n;grass.instanceMatrix.needsUpdate=true;if(grass.instanceColor)grass.instanceColor.needsUpdate=true;grass.computeBoundingSphere();grass.boundingSphere.radius+=.7;scene.add(grass);
   // Pequenos grupos de flores silvestres, margaridas e flores lilases.
   const flowers=[];
   const centers=[[-5,12],[-4,20],[9,16],[12,21],[-13,8],[-6,28],[7,30],[11,8],[-5,4],[12,1],[-13,19],[3,-13],[-5,-18]];
   for(const [cx,cz] of centers)for(let k=0;k<42;k++){
     const a=rand()*Math.PI*2,r=Math.sqrt(rand())*1.65,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r;
-    if(clear(x,z))flowers.push({x,z,h:.12+rand()*.18,size:.7+rand()*.65,kind:Math.floor(rand()*5),a:rand()*Math.PI*2});
+    if(clear(x,z))flowers.push({x,z,h:.34+rand()*.24,size:1.05+rand()*.55,kind:Math.floor(rand()*5),a:rand()*Math.PI*2});
   }
-  const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.008,.010,1,5),new THREE.MeshStandardMaterial({color:0x527b36,roughness:1}),flowers.length);
-  const petals=new THREE.InstancedMesh(new THREE.SphereGeometry(1,7,5),new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85}),flowers.length*5);
-  const hearts=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,5),new THREE.MeshStandardMaterial({color:0xf3be38,roughness:.8}),flowers.length);
+  const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.006,.009,1,5,4),windMaterial(new THREE.MeshStandardMaterial({color:0x527b36,roughness:1})),flowers.length);
+  const petals=new THREE.InstancedMesh(new THREE.SphereGeometry(1,7,5),windMaterial(new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85})),flowers.length*5);
+  const hearts=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,5),windMaterial(new THREE.MeshStandardMaterial({color:0xf3be38,roughness:.8})),flowers.length);
   const palette=[0xfff4dd,0xfff7ef,0xf4c448,0xb18ce3,0xe9a4c5];
   flowers.forEach((f,i)=>{
     dummy.rotation.set(0,0,0);dummy.position.set(f.x,.025+f.h/2,f.z);dummy.scale.set(1,f.h,1);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);
@@ -264,7 +293,7 @@ function addGardenPlants(){
       petals.setMatrixAt(i*5+k,dummy.matrix);petals.setColorAt(i*5+k,color.setHex(palette[f.kind]));
     }
   });
-  for(const mesh of [stems,petals,hearts]){mesh.userData.decoration=true;mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();scene.add(mesh);}
+  for(const mesh of [stems,petals,hearts]){mesh.userData.decoration=true;mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();mesh.boundingSphere.radius+=.7;scene.add(mesh);}
 }
 addGardenPlants();
 
@@ -382,6 +411,7 @@ new ResizeObserver(resize).observe(canvas);resize();
 const clock=new THREE.Clock();
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),.05);
+  gardenWindTime.value+=dt;
   if(!modal || modal.hidden)navigation.update(dt);
   const playerPosition=navigation.getPlayerPosition();
   projectsHall.update(dt,playerPosition,navigation.getMode());
