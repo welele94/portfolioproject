@@ -200,6 +200,7 @@ for(let x=-25;x<=25;x+=8)tree(x,-41,.9);
 
 // Vegetação baixa: distribuição determinística em manchas, sem colisões.
 const gardenWindTime={value:0};
+const grassCells=[];
 // Deslocamento em coordenadas do mundo: a base mantém-se fixa e as pontas ondulam.
 // Usado em todas as peças das flores, com a mesma altura de referência.
 function windMaterial(material){
@@ -244,7 +245,7 @@ function addGardenPlants(){
   // Folhas estreitas, curvas em dois segmentos, com base larga apenas alguns milímetros.
   for(let k=0;k<7;k++){
     const a=k*2.39996,dx=Math.cos(a),dz=Math.sin(a);
-    const w=.009+(k%3)*.002,h=.65+(k%4)*.10,lean=.09+(k%3)*.045;
+    const w=.013+(k%3)*.002,h=.65+(k%4)*.10,lean=.09+(k%3)*.045;
     const bx=dx*.042,bz=dz*.042;
     const L=[bx-dz*w,0,bz+dx*w],R=[bx+dz*w,0,bz-dx*w];
     const M1=[bx+dx*lean*.32-dz*w*.62,h*.58,bz+dz*lean*.32+dx*w*.62];
@@ -259,8 +260,19 @@ function addGardenPlants(){
   normals.needsUpdate=true;
   // Distribuição por células de 8 m, com amostragem irregular dentro de cada célula.
   // Os lotes independentes permitem frustum culling e evitam desenhar todo o campus.
-  const grassMaterial=windMaterial(new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,side:THREE.DoubleSide}));
-  const grassSpacing=.125; // ~64 posições/m² antes das exclusões e variações de densidade
+  const grassMaterial=windMaterial(new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide}));
+  // Geometria simplificada para distâncias médias e longas.
+  function simpleBlades(count,width){
+    const p=[];
+    for(let k=0;k<count;k++){
+      const a=k*2.39996,dx=Math.cos(a),dz=Math.sin(a),h=.70+(k%3)*.10;
+      p.push(-dz*width,0,dx*width,dz*width,0,-dx*width,dx*.14,h,dz*.14);
+    }
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+    g.setAttribute('normal',new THREE.Float32BufferAttribute(Array.from({length:p.length},(_,i)=>i%3===1?1:0),3));return g;
+  }
+  const midBlades=simpleBlades(4,.016),farBlades=simpleBlades(3,.026);
+  const grassSpacing=.18; // ~31 posições/m²; folhas ligeiramente mais largas preservam cobertura
   for(let tz=-42;tz<42;tz+=8)for(let tx=-27;tx<27;tx+=8){
     const samples=[];
     const xEnd=Math.min(tx+8,27),zEnd=Math.min(tz+8,42);
@@ -273,15 +285,23 @@ function addGardenPlants(){
       samples.push({x,z,height,spread:.82+rand()*.38,angle:rand()*Math.PI*2,hue:.225+rand()*.065,sat:.42+rand()*.19,light:.12+rand()*.075});
     }
     if(!samples.length)continue;
-    const grass=new THREE.InstancedMesh(blades,grassMaterial,samples.length);
-    grass.userData.decoration=true;
-    samples.forEach((v,n)=>{
-      dummy.position.set(v.x,.025,v.z);dummy.rotation.set(0,v.angle,0);
-      dummy.scale.set(v.spread,v.height,v.spread);dummy.updateMatrix();
-      grass.setMatrixAt(n,dummy.matrix);grass.setColorAt(n,color.setHSL(v.hue,v.sat,v.light));
-    });
-    grass.instanceMatrix.needsUpdate=true;grass.instanceColor.needsUpdate=true;
-    grass.computeBoundingSphere();grass.boundingSphere.radius+=.7;scene.add(grass);
+    // Baralhar deterministicamente antes de reduzir a contagem, evitando faixas vazias.
+    for(let j=samples.length-1;j>0;j--){const k=Math.floor(rand()*(j+1));[samples[j],samples[k]]=[samples[k],samples[j]];}
+    const levels=[];
+    for(const [geometry,fraction,spreadBoost] of [[blades,1,1],[midBlades,.48,1.35],[farBlades,.15,1.9]]){
+      const count=Math.max(1,Math.floor(samples.length*fraction));
+      const grass=new THREE.InstancedMesh(geometry,grassMaterial,count);
+      grass.userData.decoration=true;grass.castShadow=false;grass.receiveShadow=false;
+      for(let n=0;n<count;n++){
+        const v=samples[n];dummy.position.set(v.x,.025,v.z);dummy.rotation.set(0,v.angle,0);
+        dummy.scale.set(v.spread*spreadBoost,v.height,v.spread*spreadBoost);dummy.updateMatrix();
+        grass.setMatrixAt(n,dummy.matrix);grass.setColorAt(n,color.setHSL(v.hue,v.sat,v.light));
+      }
+      grass.instanceMatrix.needsUpdate=true;grass.instanceColor.needsUpdate=true;
+      grass.computeBoundingSphere();grass.boundingSphere.radius+=.7;
+      grass.visible=false;scene.add(grass);levels.push(grass);
+    }
+    grassCells.push({x:(tx+xEnd)/2,z:(tz+zEnd)/2,levels,current:-1});
   }
   // Pequenos grupos de flores silvestres, margaridas e flores lilases.
   const flowers=[];
@@ -308,6 +328,14 @@ function addGardenPlants(){
   for(const mesh of [stems,petals,hearts]){mesh.userData.decoration=true;mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();mesh.boundingSphere.radius+=.7;scene.add(mesh);}
 }
 addGardenPlants();
+function updateGrassLOD(camera,mode){
+  for(const cell of grassCells){
+    const d=Math.hypot(camera.position.x-cell.x,camera.position.z-cell.z,camera.position.y-0.8);
+    const next=mode==='aerial'?2:d<11?0:d<24?1:d<58?2:-1;
+    if(next===cell.current)continue;
+    cell.levels.forEach((mesh,i)=>mesh.visible=i===next);cell.current=next;
+  }
+}
 
 // Referência de escala: H mostra/esconde silhueta de 1.75 m no jardim.
 const humanReference=new THREE.Group();
@@ -436,5 +464,6 @@ renderer.setAnimationLoop(()=>{
   if(navigation.getMode()==='aerial')controls.update();
   destinationMarker.material.opacity=.68+.24*Math.sin(clock.elapsedTime*3);
   destinationMarker.material.transparent=true;
+  updateGrassLOD(camera,navigation.getMode());
   renderer.render(scene,camera);
 });
