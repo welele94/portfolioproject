@@ -20,15 +20,24 @@ export function createProjectsHall({scene, obstacles}) {
     if(collision)obstacles.push({type:'box',x,z,w,d});
     return mesh;
   }
+  // Canvas de alta resolução, com filtragem para leitura em ângulos oblíquos.
+  function sharpTexture(canvas){
+    const t=new THREE.CanvasTexture(canvas);
+    t.colorSpace=THREE.SRGBColorSpace;
+    t.anisotropy=16;
+    t.minFilter=THREE.LinearMipmapLinearFilter;
+    t.magFilter=THREE.LinearFilter;
+    return t;
+  }
   function signTexture(title,subtitle) {
-    const canvas=document.createElement('canvas'); canvas.width=1024;canvas.height=512;
-    const c=canvas.getContext('2d');
+    const canvas=document.createElement('canvas'); canvas.width=2048;canvas.height=1024;
+    const c=canvas.getContext('2d');c.scale(2,2);
     c.fillStyle='#18304b';c.fillRect(0,0,1024,512);
     c.fillStyle='#58dcfb';c.fillRect(18,18,988,12);
     c.fillStyle='#fff';c.textAlign='center';c.textBaseline='middle';
-    c.font='bold 74px system-ui';c.fillText(title,512,206,940);
-    c.fillStyle='#a2daed';c.font='36px system-ui';c.fillText(subtitle,512,314,940);
-    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+    c.font='bold 116px system-ui';c.fillText(title,512,206,940);
+    c.fillStyle='#a2daed';c.font='bold 62px system-ui';c.fillText(subtitle,512,314,940);
+    const texture=sharpTexture(canvas);
     return texture;
   }
 
@@ -84,7 +93,7 @@ export function createProjectsHall({scene, obstacles}) {
   const roof=solid(width+.7,.38,depth+.7,cx,height+.21,cz,roofMaterial);
   // A placa de fachada continua visível; não flutua no teto.
   const nameSign=new THREE.Mesh(new THREE.PlaneGeometry(10,2.4),
-    new THREE.MeshBasicMaterial({map:signTexture('CENTRO TECNOLÓGICO','Projetos · Entra e explora'),side:THREE.DoubleSide}));
+    new THREE.MeshBasicMaterial({map:signTexture('CENTRO TECNOLÓGICO','Projetos · Entra e explora'),side:THREE.DoubleSide,toneMapped:false}));
   nameSign.position.set(cx,5.6,2.27);scene.add(nameSign);
 
   const interactables=[doorAction];
@@ -98,23 +107,23 @@ export function createProjectsHall({scene, obstacles}) {
   const frameMaterial=new THREE.MeshStandardMaterial({color:0x263440,roughness:.8});
   const loader=new THREE.TextureLoader();
   function artwork(p){
-    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=768;
-    const ctx=canvas.getContext('2d');
-    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+    const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1536;
+    const ctx=canvas.getContext('2d');ctx.scale(2,2);
+    const texture=sharpTexture(canvas);
     function draw(image){
       ctx.fillStyle='#f5f3ed';ctx.fillRect(0,0,1024,768);
-      ctx.fillStyle='#182d42';ctx.fillRect(32,32,960,570);
+      ctx.fillStyle='#182d42';ctx.fillRect(32,32,960,490);
       if(image){
-        const scale=Math.min(960/image.width,570/image.height);
+        const scale=Math.min(960/image.width,490/image.height);
         const w=image.width*scale,h=image.height*scale;
-        ctx.drawImage(image,512-w/2,317-h/2,w,h);
+        ctx.drawImage(image,512-w/2,277-h/2,w,h);
       }else{
         ctx.fillStyle='#fff';ctx.font='bold 100px system-ui';ctx.textAlign='center';
         ctx.fillText(p.title,512,340,880);
       }
-      ctx.textAlign='center';ctx.fillStyle='#182d42';ctx.font='bold 54px system-ui';
-      ctx.fillText(p.title,512,671,940);
-      ctx.font='30px system-ui';ctx.fillText(p.subtitle,512,725,940);
+      ctx.textAlign='center';ctx.fillStyle='#182d42';ctx.font='bold 104px system-ui';
+      ctx.fillText(p.title,512,637,940);
+      ctx.font='bold 46px system-ui';ctx.fillText(p.subtitle,512,716,940);
       texture.needsUpdate=true;
     }
     draw(null);
@@ -162,23 +171,24 @@ export function createProjectsHall({scene, obstacles}) {
   for(const x of [18.35,21.65])solid(.08,2.4,.09,x,1.4,1.70,cyan);
   solid(3.38,.06,.09,20,2.62,1.70,purple);
   for(let x=12.2;x<28;x+=.48)solid(.14,2.0,.12,x,5.05,-17.60,graphite);
-  const labSign=new THREE.Mesh(new THREE.PlaneGeometry(6.4,1.1),new THREE.MeshBasicMaterial({map:signTexture('DEV LAB','CODE · CREATE · EXPLORE'),toneMapped:false}));
-  labSign.position.set(20,4.05,-17.48);scene.add(labSign);
+  const labSign=new THREE.Mesh(new THREE.PlaneGeometry(6.4,2.1),new THREE.MeshBasicMaterial({map:signTexture('DEV LAB','CODE · CREATE · EXPLORE'),toneMapped:false}));
+  labSign.position.set(20,4.35,-17.43);scene.add(labSign);
 
   // Texturas procedurais: terminais e editores fictícios, sem dependências.
   function screenMaterial(kind){
-    const c=document.createElement('canvas');c.width=768;c.height=432;
-    const ctx=c.getContext('2d');
+    const c=document.createElement('canvas');c.width=1536;c.height=864;
+    const ctx=c.getContext('2d');ctx.scale(2,2);
     ctx.fillStyle='#080e18';ctx.fillRect(0,0,768,432);
     ctx.fillStyle='#202c3c';ctx.fillRect(0,0,768,34);
     for(let i=0;i<3;i++){ctx.fillStyle=['#fa6e83','#ffcf70','#62dbad'][i];ctx.beginPath();ctx.arc(16+i*18,17,5,0,Math.PI*2);ctx.fill();}
-    ctx.font='17px monospace';ctx.fillStyle='#b8c8de';ctx.fillText(kind===0?'workspace / main.js':kind===1?'dev@lab: ~/projects':'SYSTEM MONITOR',95,23);
+    ctx.font='bold 24px monospace';ctx.fillStyle='#b8c8de';ctx.fillText(kind===0?'workspace / main.js':kind===1?'dev@lab: ~/projects':'SYSTEM MONITOR',95,23);
     const lines=kind===0?['import * as THREE from "three";','','const scene = new THREE.Scene();','const camera = createCamera();','const renderer = createRenderer();','','function animate(dt) {','  world.update(dt);','  renderer.render(scene, camera);','}','','// build something new','export { scene, camera };']:kind===1?['$ npm run dev','[OK] Starting local workspace','[OK] Assets loaded','[OK] Scene initialized','','$ git status','On branch main','Working tree clean','','$ node diagnostics.js','[OK] Render pipeline ready','[OK] All systems online','dev@lab:~$ _']:['CPU / GPU TELEMETRY','=======================','CPU   [|||||||||     ]  64%','GPU   [|||||||||||   ]  78%','RAM   [||||||        ]  43%','','RENDER ENGINE: ONLINE','NETWORK: CONNECTED','BUILD: SUCCESS','','FRAME BUFFER: READY','STATUS: NOMINAL'];
-    for(let j=0;j<lines.length;j++){
+    ctx.font='bold 29px monospace';
+    for(let j=0;j<Math.min(lines.length,9);j++){
       ctx.fillStyle=kind===0?['#80d6ff','#c3a6ff','#9de7b5'][j%3]:kind===1?'#65e8a5':'#56d5ee';
-      ctx.fillText(lines[j],24,67+j*25);
+      ctx.fillText(lines[j],24,75+j*40,720);
     }
-    const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;
+    const texture=sharpTexture(c);
     return new THREE.MeshBasicMaterial({map:texture,toneMapped:false});
   }
   const screens=[screenMaterial(0),screenMaterial(1),screenMaterial(2)];
