@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { exteriorMaterial, metricBox } from './materials.js';
 
 // Modelação procedural dos interiores. Todas as dimensões em metros.
 export function createInteriors({scene,obstacles}){
@@ -10,7 +11,7 @@ export function createInteriors({scene,obstacles}){
     const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);
     const top=new THREE.Group();group.add(top);
     function box(W,H,D,X,Y,Z,M,collide=false,parent=group){
-      const o=new THREE.Mesh(new THREE.BoxGeometry(W,H,D),M);
+      const o=new THREE.Mesh(metricBox(W,H,D,M),M);
       o.position.set(X,Y,Z);o.castShadow=parent!==top;o.receiveShadow=true;parent.add(o);
       if(collide)obstacles.push({type:'box',x:x+X,z:z+Z,w:W,d:D});return o;
     }
@@ -66,16 +67,16 @@ export function createInteriors({scene,obstacles}){
   }
   // Apenas o prédio central é a casa. Os vizinhos são cenário.
   for(const [X,color] of [[-25.4,0xc5b4a3],[-12.6,0xd0b3a8]]){
-    const body=new THREE.Mesh(new THREE.BoxGeometry(6.2,7.4,12),mat(color));
+    const body=new THREE.Mesh(metricBox(6.2,7.4,12,{userData:{tileMeters:3}}),exteriorMaterial('plaster',color));
     body.position.set(X,3.7,34);body.castShadow=true;body.receiveShadow=true;scene.add(body);
     obstacles.push({type:'box',x:X,z:34,w:6.2,d:12});
-    const roof=new THREE.Mesh(new THREE.BoxGeometry(6.3,.55,12.3),mat(0x995b4b));
+    const roof=new THREE.Mesh(metricBox(6.3,.55,12.3,{userData:{tileMeters:2}}),exteriorMaterial('roof',0xb26954));
     roof.position.set(X,7.675,34);roof.castShadow=true;scene.add(roof);
     const door=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.15,.12),dark);
     door.position.set(X,1.075,40.06);scene.add(door);
   }
   {
-    const r=room({x:-19,z:34,w:6.2,d:12,h:7.4,wall:mat(0xb7c8c1),roof:mat(0x995b4b),floor:oak});
+    const r=room({x:-19,z:34,w:6.2,d:12,h:7.4,wall:exteriorMaterial('plaster',0xb7c8c1),roof:exteriorMaterial('roof',0xb26954),floor:oak});
     const {box,light,partition,table,chair}=r;
     light(0,3);light(0,-.8);light(0,-4);
     // Sala e cozinha em open space; quarto separado por parede com vão.
@@ -108,7 +109,7 @@ export function createInteriors({scene,obstacles}){
   }
   // UAb: duas divisões reais, biblioteca à entrada e sala de aula no fundo.
   {
-    const r=room({x:20,z:34,w:16,d:13,h:7,wall:white,roof:steel,floor:mat(0xb8b3a6),doorWidth:2});
+    const r=room({x:20,z:34,w:16,d:13,h:7,wall:exteriorMaterial('plaster',0xf3f0e9),roof:exteriorMaterial('metal',0x7d8b98),floor:mat(0xb8b3a6),doorWidth:2});
     const {box,table,chair,shelf,computer,light,partition,group}=r;
     for(const X of [-5,0,5]){light(X,-3);light(X,3);}
     // Parede transversal até ao teto, com passagem central de 2 m.
@@ -139,7 +140,7 @@ export function createInteriors({scene,obstacles}){
   }
   // Dachser: 70% do comprimento em X para armazém, 30% para escritório.
   {
-    const r=room({x:0,z:-33,w:24,d:13,h:8,wall:mat(0xc9cdd0),roof:dark,floor:mat(0x8b9094),doorWidth:2.8});
+    const r=room({x:0,z:-33,w:24,d:13,h:8,wall:exteriorMaterial('concrete',0xe0e2e4),roof:exteriorMaterial('metal',0x57616b),floor:mat(0x8b9094),doorWidth:2.8});
     const {box,partition,table,chair,computer,light}=r;
     const split=4.8;
     // Divisória com passagem de 1.8 m junto à entrada.

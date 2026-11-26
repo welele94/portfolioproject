@@ -1,0 +1,94 @@
+import * as THREE from 'three';
+
+// Materiais exteriores procedurais locais, sem downloads ou dependências adicionais.
+// O UV das caixas é medido em metros; cada padrão tem uma escala física consistente.
+const SIZE=512;
+const cache=new Map();
+const fract=n=>n-Math.floor(n);
+function hash(x,y,seed){let n=Math.imul(x+seed,374761393)+Math.imul(y,668265263);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967295;}
+function noise(x,y,n,seed){
+  const u=x*n,v=y*n,ix=Math.floor(u),iy=Math.floor(v),fx=fract(u),fy=fract(v);
+  const a=fx*fx*(3-2*fx),b=fy*fy*(3-2*fy),wrap=k=>(k%n+n)%n;
+  const h=(dx,dy)=>hash(wrap(ix+dx),wrap(iy+dy),seed);
+  return (h(0,0)*(1-a)+h(1,0)*a)*(1-b)+(h(0,1)*(1-a)+h(1,1)*a)*b;
+}
+const configs={
+  grass:{scale:2,roughness:.96,bump:.018,color:[173,190,143]},
+  pavement:{scale:2,roughness:.91,bump:.012,color:[217,211,197]},
+  asphalt:{scale:2,roughness:.96,bump:.006,color:[164,165,165]},
+  plaster:{scale:3,roughness:.93,bump:.006,color:[237,233,225]},
+  concrete:{scale:3,roughness:.88,bump:.009,color:[211,212,210]},
+  roof:{scale:2,roughness:.86,bump:.018,color:[221,196,183]},
+  metal:{scale:2,roughness:.72,bump:.009,color:[207,211,215]},
+  bark:{scale:1,roughness:1,bump:.035,color:[202,176,145]},
+  foliage:{scale:1,roughness:1,bump:.012,color:[179,207,155]},
+  wood:{scale:2,roughness:.83,bump:.007,color:[219,187,154]}
+};
+function texturePair(kind){
+  if(cache.has(kind))return cache.get(kind);
+  const cfg=configs[kind];
+  const canvas=document.createElement('canvas'),height=document.createElement('canvas');
+  canvas.width=canvas.height=height.width=height.height=SIZE;
+  const ctx=canvas.getContext('2d'),hc=height.getContext('2d'),img=ctx.createImageData(SIZE,SIZE),hm=hc.createImageData(SIZE,SIZE);
+  const clamp=v=>Math.max(0,Math.min(255,v));
+  for(let py=0;py<SIZE;py++)for(let px=0;px<SIZE;px++){
+    const x=px/SIZE,y=py/SIZE,k=(py*SIZE+px)*4;
+    const fine=hash(px,py,43)-.5,macro=noise(x,y,8,79)-.5,mid=noise(x,y,32,31)-.5;
+    let v=1,b=.5,r=0,g=0;
+    if(kind==='grass'||kind==='foliage'){
+      const blades=noise(x,y,128,19)-.5;
+      v=.91+.24*macro+.18*mid+.22*fine+.23*blades;
+      g=12*macro;r=8*mid;b=.48+.35*blades+.18*fine;
+    }else if(kind==='pavement'){
+      const rows=8,cols=6,row=Math.floor(y*rows);
+      const u=fract(x*cols+(row%2)*.5),w=fract(y*rows);
+      const edge=Math.min(u,1-u,w,1-w);
+      const joint=Math.max(0,Math.min(1,(edge-.012)/.035));
+      const stone=hash((Math.floor(x*cols+(row%2)*.5)+cols)%cols,row,17)-.5;
+      v=(.65+.35*joint)*(1+.12*stone+.12*mid+.10*fine);b=.20+.58*joint+.10*fine;
+    }else if(kind==='asphalt'){
+      v=.90+.18*macro+.22*fine+.12*mid;b=.48+.37*fine+.12*mid;
+      if(fine>.46)v+=.14;
+    }else if(kind==='roof'){
+      const row=Math.floor(y*7),u=fract(x*7+(row%2)*.5),w=fract(y*7);
+      const seam=Math.min(u,1-u,w,1-w);
+      const tile=Math.max(0,Math.min(1,seam/.035));
+      v=(.72+.28*tile)*(.9+.13*Math.sin(u*Math.PI)+.10*macro+.08*fine);b=.25+.4*tile+.16*Math.sin(u*Math.PI);
+    }else if(kind==='metal'){
+      const u=fract(x*8),ridge=Math.pow(Math.abs(Math.cos(u*Math.PI)),14);
+      v=.96-.22*ridge+.06*fine+.07*macro;b=.38+.46*ridge;
+    }else if(kind==='bark'||kind==='wood'){
+      const stripe=Math.sin(2*Math.PI*(x*18+noise(x,y,4,91)*1.8));
+      const groove=Math.pow((1+stripe)/2,4);
+      v=.98-.32*groove+.15*macro+.12*fine;b=.65-.35*groove+.1*fine;
+    }else{
+      v=.98+.10*macro+.10*mid+.10*fine;b=.5+.16*mid+.20*fine;
+      if(kind==='concrete'&&fine>.48)v-=.15;
+    }
+    img.data[k]=clamp(cfg.color[0]*v+r);img.data[k+1]=clamp(cfg.color[1]*v+g);img.data[k+2]=clamp(cfg.color[2]*v);
+    img.data[k+3]=255;hm.data[k]=hm.data[k+1]=hm.data[k+2]=clamp(b*255);hm.data[k+3]=255;
+  }
+  ctx.putImageData(img,0,0);hc.putImageData(hm,0,0);
+  function tex(c,color){const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;t.colorSpace=color?THREE.SRGBColorSpace:THREE.NoColorSpace;return t;}
+  const pair={map:tex(canvas,true),bumpMap:tex(height,false)};
+  cache.set(kind,pair);return pair;
+}
+export function exteriorMaterial(kind,color=0xffffff){
+  const cfg=configs[kind];return new THREE.MeshStandardMaterial({color,...texturePair(kind),roughness:cfg.roughness,bumpScale:cfg.bump,userData:{tileMeters:cfg.scale}});
+}
+// BoxGeometry tem seis faces e UV 0..1 por face. Reescala pelas dimensões reais.
+export function metricBox(w,h,d,material){
+  const geometry=new THREE.BoxGeometry(w,h,d),tile=material?.userData?.tileMeters;
+  if(!tile)return geometry;
+  const uv=geometry.attributes.uv;
+  const sizes=[[d,h],[d,h],[w,d],[w,d],[w,h],[w,h]];
+  for(let face=0;face<6;face++)for(let j=0;j<4;j++){
+    const k=face*4+j;uv.setXY(k,uv.getX(k)*sizes[face][0]/tile,uv.getY(k)*sizes[face][1]/tile);
+  }
+  uv.needsUpdate=true;return geometry;
+}
+export function metricCylinder(geometry,material,radius,height){
+  const uv=geometry.attributes.uv,tile=material.userData.tileMeters||1;
+  for(let j=0;j<uv.count;j++)uv.setXY(j,uv.getX(j)*Math.max(1,Math.round(2*Math.PI*radius/tile)),uv.getY(j)*height/tile);
+  uv.needsUpdate=true;return geometry;
+}

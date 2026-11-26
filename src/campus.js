@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { exteriorMaterial, metricBox, metricCylinder } from './materials.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNavigation } from './navigation.js';
 import { createProjectsHall } from './projects-hall.js';
@@ -40,19 +41,19 @@ sun.shadow.normalBias = .025;
 scene.add(sun);
 
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .83, ...extra });
-const ground = mat('#6b9657'), pavement = mat('#d0bc9a'), road = mat('#545c63');
-const building = mat('#c9cdd0'), windowMat = mat('#779ba8', { metalness: .15, roughness: .24 });
-const roofMat = mat('#707983'), dark = mat('#3c4b59'), white = mat('#f0e6ce');
-const water = mat('#64bce5', { metalness: .2, roughness: .15 }), trunk = mat('#70523b'), leaves = [mat('#4d8955'), mat('#66a368'), mat('#387349')];
+const ground = exteriorMaterial('grass','#7db35b'), pavement = exteriorMaterial('pavement','#ded1b9'), road = exteriorMaterial('asphalt','#666c72');
+const building = exteriorMaterial('plaster','#e0e0df'), windowMat = mat('#779ba8', { metalness: .15, roughness: .24 });
+const roofMat = exteriorMaterial('metal','#858b92'), dark = mat('#3c4b59'), white = mat('#f0e6ce');
+const water = mat('#64bce5', { metalness: .2, roughness: .15 }), trunk = exteriorMaterial('bark','#87684a'), leaves = [exteriorMaterial('foliage','#5e9b56'),exteriorMaterial('foliage','#78ac65'),exteriorMaterial('foliage','#4c804b')];
 const blue = mat('#276eae', { emissive: '#124477', emissiveIntensity: .22 });
-const plants = mat('#4e874a');
+const plants = exteriorMaterial('grass','#66a052');
 // Obstáculos simplificados em coordenadas do mundo (XZ).
 const obstacles = [];
 const addBoxObstacle=(x,z,w,d)=>obstacles.push({type:'box',x,z,w,d});
 const addCircleObstacle=(x,z,r)=>obstacles.push({type:'circle',x,z,r});
 
 function block(w,h,d,x,y,z,material,parent=scene,shadow=true) {
-  const o = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), material);
+  const o = new THREE.Mesh(metricBox(w,h,d,material), material);
   o.position.set(x,y,z); o.castShadow=shadow; o.receiveShadow=true; parent.add(o); return o;
 }
 function plane(w,d,x,z,material,y=.015){ return block(w,.05,d,x,y,z,material,scene,false); }
@@ -88,9 +89,9 @@ function tree(x,z,scale=1) {
   addCircleObstacle(x,z,.31*scale);
   // Árvores de parque: ~6 m de altura para escala 1, sem copa ao nível dos olhos.
   const trunkHeight=3.25*scale, canopyRadius=1.55*scale;
-  const c=new THREE.Mesh(new THREE.CylinderGeometry(.19*scale,.29*scale,trunkHeight,7),trunk);
+  const c=new THREE.Mesh(metricCylinder(new THREE.CylinderGeometry(.19*scale,.29*scale,trunkHeight,12),trunk,.24*scale,trunkHeight),trunk);
   c.position.set(x,trunkHeight/2,z);c.castShadow=true;scene.add(c);
-  const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(canopyRadius,1),leaves[Math.floor((Math.abs(x*13+z*17))%leaves.length)]);
+  const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(canopyRadius,2),leaves[Math.floor((Math.abs(x*13+z*17))%leaves.length)]);
   canopy.position.set(x,trunkHeight+canopyRadius*.85,z);canopy.castShadow=true;scene.add(canopy);
 }
 function billboard(title,x,z) {
@@ -112,6 +113,10 @@ plane(64,3.5,0,45,road,.06);
 plane(64,3.5,0,-45,road,.06);
 plane(3.8,92,-30,0,road,.06);
 plane(3.8,92,30,0,road,.06);
+// Marcações discretas no eixo das estradas periféricas.
+const roadPaint=mat('#d6d5ca');
+for(let x=-28;x<=28;x+=6)for(const z of [-45,45])plane(2.2,.09,x,z,roadPaint,.091);
+for(let z=-36;z<=36;z+=6)for(const x of [-30,30])plane(.09,2.2,x,z,roadPaint,.091);
 // Jardim e rede pedonal contínua. O pavimento fica acima da relva.
 plane(32,28,0,13,plants,.09);
 const pathWidth=3;
@@ -157,7 +162,7 @@ const fountainJet=new THREE.Mesh(new THREE.CylinderGeometry(.08,.15,1.10,12),wat
 fountainJet.position.set(0,HUMAN.fountainRimHeight+.49,15);scene.add(fountainJet);
 for(const [x,z] of [[-13,7],[-7,19],[11,9],[10,20],[-6,28],[7,30]]) tree(x,z,.85);
 // Bancos: assento a 45 cm (antes ~81 cm), 1.60 x 0.43 m.
-const benchWood=mat('#846348');
+const benchWood=exteriorMaterial('wood','#a1805d');
 for(const [x,z] of [[-6,8],[8,11],[-7,27],[7,27]]) {
   addBoxObstacle(x,z,HUMAN.benchLength,HUMAN.seatDepth);
   const seatThickness=.10;

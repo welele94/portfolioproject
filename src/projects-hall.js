@@ -1,18 +1,17 @@
 import * as THREE from 'three';
+import { exteriorMaterial, metricBox } from './materials.js';
 
 // Centro Tecnológico — primeira sala transitável, 1 unidade = 1 metro.
 // Os retângulos de colisão correspondem às paredes; a entrada não tem colisão.
 export function createProjectsHall({scene, obstacles}) {
   const cx=20, cz=-8, width=17, depth=20, height=9;
-  const wallMaterial=new THREE.MeshStandardMaterial({color:0xdce5e9,roughness:.8});
+  const wallMaterial=exteriorMaterial('concrete',0xe1e6e9);
   const floorMaterial=new THREE.MeshStandardMaterial({color:0x222831,roughness:.82});
-  const roofMaterial=new THREE.MeshStandardMaterial({
-    color:0x11151e,roughness:.85,transparent:false,opacity:1,depthWrite:true
-  });
+  const roofMaterial=exteriorMaterial('metal',0x232934);
   const accent=new THREE.MeshStandardMaterial({color:0x36b8ec,emissive:0x124967,emissiveIntensity:.4});
   const stationMaterial=new THREE.MeshStandardMaterial({color:0x183149,roughness:.6});
   function solid(w,h,d,x,y,z,material,collision=false) {
-    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+    const mesh=new THREE.Mesh(metricBox(w,h,d,material),material);
     mesh.position.set(x,y,z);
     mesh.castShadow=material!==roofMaterial;
     mesh.receiveShadow=true;
