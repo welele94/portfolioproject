@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNavigation } from './navigation.js';
 import { createProjectsHall } from './projects-hall.js';
+import { createInteriors } from './interiors.js';
 
 // Primeiro protótipo do campus: volumes, caminhos e orientação.
 // Escala de referência: 1 unidade = 1 metro virtual. Norte = Z negativo.
@@ -166,14 +167,11 @@ for(const [x,z] of [[-6,8],[8,11],[-7,27],[7,27]]) {
   back.rotation.x=-.12;
 }
 
-// Casa: três edifícios unidos na zona inferior esquerda, ponto inicial.
-for(const [i,x] of [-1,0,1].map((i)=>[i,-19+i*6.4])){
-  addBoxObstacle(x,34,6.2,12);
-  block(6.2,7.4,12,x,3.7,34,mat(['#c5b4a3','#b7c8c1','#d0b3a8'][i+1]));
-  block(6.3,.55,12.3,x,7.7,34,mat('#995b4b'));
-  block(HUMAN.doorWidth,HUMAN.doorHeight,.14,x,HUMAN.doorHeight/2,40.08,dark,scene,false);
-}
+// Casa, UAb e Dachser: volumes transitáveis e mobiliário procedural.
+const interiors=createInteriors({scene,obstacles});
 label('CASA',-19,8.4,34,14);
+label('UAb',20,7.65,34,13.6);
+label('DACHSER',0,8.65,-33,20.4);
 
 // Centro Tecnológico: paredes reais com abertura transitável, quatro quadros
 // interativos e teto separado, sem o antigo bloco maciço.
@@ -183,9 +181,9 @@ billboard('Centro Tecnológico',8,6);
 billboard('One more thing...',8,28);
 
 // UAb: inferior direita.
-structure('UAb',20,34,16,13,7,roofMat,2);
+
 // Dachser: topo, mais distante e opcional.
-structure('DACHSER',0,-33,24,13,8,dark,2);
+
 // Blocos residenciais à esquerda e ao topo direito.
 structure('APARTAMENTOS',-20,-11,12,21,11,roofMat,4);
 structure('APARTAMENTOS',21,-34,14,12,11,roofMat,4);
@@ -264,7 +262,7 @@ const projectLink=document.querySelector('#project-link');
 const projectImage=document.querySelector('#project-image');
 const raycaster=new THREE.Raycaster();
 const targets=new Map();
-for(const action of projectsHall.interactables)
+for(const action of [...projectsHall.interactables,...interiors.interactables])
   for(const mesh of action.meshes)targets.set(mesh,action);
 function getInteraction(){
   if(navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
@@ -310,6 +308,7 @@ renderer.setAnimationLoop(()=>{
   if(!modal || modal.hidden)navigation.update(dt);
   const playerPosition=navigation.getPlayerPosition();
   projectsHall.update(dt,playerPosition,navigation.getMode());
+  interiors.update(dt,playerPosition,navigation.getMode());
   const action=getInteraction();
   if(prompt){
     prompt.hidden=!action;
