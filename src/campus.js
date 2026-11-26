@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { exteriorMaterial, metricBox, metricCylinder } from './materials.js';
+import { exteriorMaterial, metricBox, metricCylinder, organicGrass } from './materials.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNavigation } from './navigation.js';
 import { createProjectsHall } from './projects-hall.js';
@@ -41,12 +41,12 @@ sun.shadow.normalBias = .025;
 scene.add(sun);
 
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .83, ...extra });
-const ground = exteriorMaterial('grass','#7db35b'), pavement = exteriorMaterial('pavement','#ded1b9'), road = exteriorMaterial('asphalt','#666c72');
+const ground = organicGrass(), pavement = exteriorMaterial('pavement','#ded1b9'), road = exteriorMaterial('asphalt','#666c72');
 const building = exteriorMaterial('plaster','#e0e0df'), windowMat = mat('#779ba8', { metalness: .15, roughness: .24 });
 const roofMat = exteriorMaterial('metal','#858b92'), dark = mat('#3c4b59'), white = mat('#f0e6ce');
 const water = mat('#64bce5', { metalness: .2, roughness: .15 }), trunk = exteriorMaterial('bark','#87684a'), leaves = [exteriorMaterial('foliage','#5e9b56'),exteriorMaterial('foliage','#78ac65'),exteriorMaterial('foliage','#4c804b')];
 const blue = mat('#276eae', { emissive: '#124477', emissiveIntensity: .22 });
-const plants = exteriorMaterial('grass','#66a052');
+
 // Obstáculos simplificados em coordenadas do mundo (XZ).
 const obstacles = [];
 const addBoxObstacle=(x,z,w,d)=>obstacles.push({type:'box',x,z,w,d});
@@ -118,7 +118,7 @@ const roadPaint=mat('#d6d5ca');
 for(let x=-28;x<=28;x+=6)for(const z of [-45,45])plane(2.2,.09,x,z,roadPaint,.091);
 for(let z=-36;z<=36;z+=6)for(const x of [-30,30])plane(.09,2.2,x,z,roadPaint,.091);
 // Jardim e rede pedonal contínua. O pavimento fica acima da relva.
-plane(32,28,0,13,plants,.09);
+// O jardim usa o mesmo terreno contínuo; sem placa sobreposta nem fronteira reta.
 const pathWidth=3;
 function walk(x1,z1,x2,z2,width=pathWidth){
   if(x1!==x2&&z1!==z2)throw new Error('Segmento pedonal deve ser axial');

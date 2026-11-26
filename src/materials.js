@@ -13,7 +13,7 @@ function noise(x,y,n,seed){
   return (h(0,0)*(1-a)+h(1,0)*a)*(1-b)+(h(0,1)*(1-a)+h(1,1)*a)*b;
 }
 const configs={
-  grass:{scale:2,roughness:.96,bump:.018,color:[173,190,143]},
+  grass:{scale:7.3,roughness:.96,bump:.009,color:[185,198,160]},
   pavement:{scale:2,roughness:.91,bump:.012,color:[217,211,197]},
   asphalt:{scale:2,roughness:.96,bump:.006,color:[164,165,165]},
   plaster:{scale:3,roughness:.93,bump:.006,color:[237,233,225]},
@@ -35,7 +35,11 @@ function texturePair(kind){
     const x=px/SIZE,y=py/SIZE,k=(py*SIZE+px)*4;
     const fine=hash(px,py,43)-.5,macro=noise(x,y,8,79)-.5,mid=noise(x,y,32,31)-.5;
     let v=1,b=.5,r=0,g=0;
-    if(kind==='grass'||kind==='foliage'){
+    if(kind==='grass'){
+      const blades=noise(x,y,192,19)-.5;
+      v=.96+.045*macro+.075*mid+.15*fine+.23*blades;
+      g=3*mid;r=3*mid;b=.48+.32*blades+.18*fine;
+    }else if(kind==='foliage'){
       const blades=noise(x,y,128,19)-.5;
       v=.91+.24*macro+.18*mid+.22*fine+.23*blades;
       g=12*macro;r=8*mid;b=.48+.35*blades+.18*fine;
@@ -91,4 +95,39 @@ export function metricCylinder(geometry,material,radius,height){
   const uv=geometry.attributes.uv,tile=material.userData.tileMeters||1;
   for(let j=0;j<uv.count;j++)uv.setXY(j,uv.getX(j)*Math.max(1,Math.round(2*Math.PI*radius/tile)),uv.getY(j)*height/tile);
   uv.needsUpdate=true;return geometry;
+}
+
+// Variação contínua da relva em coordenadas mundiais, sem grelha de tiles.
+// O detalhe fino vem da textura; as manchas de vários metros nunca se repetem no campus.
+export function organicGrass(){
+  const material=exteriorMaterial('grass',0x82a85d);
+  material.onBeforeCompile=shader=>{
+    shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec2 vGrassWorld;');
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGrassWorld = (modelMatrix * vec4(position,1.0)).xz;');
+    shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
+varying vec2 vGrassWorld;
+float grassHash(vec2 p){
+  return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);
+}
+float grassNoise(vec2 p){
+  vec2 i=floor(p),f=fract(p);
+  f=f*f*(3.0-2.0*f);
+  return mix(mix(grassHash(i),grassHash(i+vec2(1.,0.)),f.x),
+             mix(grassHash(i+vec2(0.,1.)),grassHash(i+vec2(1.,1.)),f.x),f.y);
+}
+`);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+vec2 gp=vGrassWorld;
+float warp=grassNoise(gp*.13+vec2(19.2,7.4));
+float broad=grassNoise(gp*.17+vec2(warp*1.6,warp*.9));
+float medium=grassNoise(gp*.67+vec2(13.7,28.2));
+float small=grassNoise(gp*2.7+vec2(3.1,7.8));
+float dry=smoothstep(.55,.88,broad*.65+medium*.35);
+vec3 tint=mix(vec3(.84,.98,.89),vec3(1.13,1.03,.71),dry);
+float shade=.88+.22*broad+.13*medium+.055*small;
+diffuseColor.rgb*=tint*shade;
+`);
+  };
+  material.customProgramCacheKey=()=> 'organic-grass-world-v1';
+  return material;
 }
