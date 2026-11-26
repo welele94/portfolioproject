@@ -64,43 +64,78 @@ export function createInteriors({scene,obstacles}){
     }
     return {box,light,partition,table,chair,computer,shelf,group};
   }
-  // Três volumes existentes: sala, cozinha e quarto, cada um com entrada própria.
-  for(let i=0;i<3;i++){
-    const r=room({x:-25.4+i*6.4,z:34,w:6.2,d:12,h:7.4,wall:mat([0xc5b4a3,0xb7c8c1,0xd0b3a8][i]),roof:mat(0x995b4b),floor:oak});
-    const {box,light,table,chair,shelf}=r;
-    light(0,-2);light(0,3);
-    if(i===0){
-      box(2.5,.38,.9,-1.2,.53,-2,fabric,true);box(2.5,.7,.18,-1.2,.92,-2.36,fabric);
-      for(const X of [-2.35,-.05])box(.18,.44,.9,X,.86,-2,fabric);
-      box(1.3,.12,.65,-1.2,.65,-.65,oak,true);
-      box(3.0,.025,3.1,-.8,.177,-.8,mat(0xc0ad99));
-      box(2.0,.45,.45,-1.2,.39,1.5,oak,true);box(1.65,.95,.09,-1.2,1.10,1.5,black);
-      shelf(1.95,-4.8,1.7);
-    }else if(i===1){
-      for(const X of [-1.9,-1.1,-.3,.5,1.3,2.1])box(.76,.82,.65,X,.57,-5.35,white,true);
-      box(4.8,.09,.72,0,1.03,-5.35,dark);box(.55,.025,.42,-1.2,1.09,-5.35,steel);
-      for(const X of [.9,1.25])for(const Z of [-5.48,-5.23])box(.23,.015,.21,X,1.09,Z,black);
-      box(.75,1.85,.78,2.35,1.085,-3.9,steel,true);
-      table(0,-1.7,1.65,.9);chair(0,-.8,1);chair(0,-2.6,-1);
-    }else{
-      box(1.75,.34,2.15,-1.35,.33,-3.5,oak,true);box(1.7,.24,2.10,-1.35,.62,-3.5,white);
-      box(1.7,.12,1.4,-1.35,.79,-3.15,fabric);box(.65,.12,.38,-1.35,.80,-4.25,white);
-      box(1.75,.85,.10,-1.35,.9,-4.6,oak);box(.55,.5,.5,.0,.41,-4.2,oak,true);
-      box(1.35,2.05,.60,1.9,1.185,-4.9,oak,true);
-      table(1.3,1.0,1.5,.7);r.computer(1.3,1.0);chair(1.3,1.8,1);
-    }
+  // Apenas o prédio central é a casa. Os vizinhos são cenário.
+  for(const [X,color] of [[-25.4,0xc5b4a3],[-12.6,0xd0b3a8]]){
+    const body=new THREE.Mesh(new THREE.BoxGeometry(6.2,7.4,12),mat(color));
+    body.position.set(X,3.7,34);body.castShadow=true;body.receiveShadow=true;scene.add(body);
+    obstacles.push({type:'box',x:X,z:34,w:6.2,d:12});
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(6.3,.55,12.3),mat(0x995b4b));
+    roof.position.set(X,7.675,34);roof.castShadow=true;scene.add(roof);
+    const door=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.15,.12),dark);
+    door.position.set(X,1.075,40.06);scene.add(door);
   }
-  // Universidade: sala de estudo, biblioteca e quadro de aula.
+  {
+    const r=room({x:-19,z:34,w:6.2,d:12,h:7.4,wall:mat(0xb7c8c1),roof:mat(0x995b4b),floor:oak});
+    const {box,light,partition,table,chair}=r;
+    light(0,3);light(0,-.8);light(0,-4);
+    // Sala e cozinha em open space; quarto separado por parede com vão.
+    partition(4.0,.16,-.95,-2.05,3);
+    box(1.78,.65,.16,1.94,2.835,-2.05,white);
+    // Sala junto à entrada, corredor livre pelo centro.
+    box(.87,.38,2.35,-2.36,.53,3.3,fabric,true);
+    box(.18,.70,2.35,-2.72,.92,3.3,fabric);
+    for(const Z of [2.22,4.38])box(.87,.44,.17,-2.36,.86,Z,fabric);
+    box(.58,.12,1.05,-1.35,.65,3.3,oak,true);
+    box(2.15,.025,2.85,-1.65,.177,3.3,mat(0xc0ad99));
+    box(.40,.48,1.65,2.66,.40,3.4,oak,true);
+    box(.08,.92,1.43,2.54,1.10,3.4,black);
+    // Cozinha linear e pequena mesa, sem ocupar o acesso ao quarto.
+    for(const Z of [-1.35,-.65,.05,.75])box(.60,.82,.67,-2.59,.57,Z,white,true);
+    box(.67,.09,2.79,-2.59,1.03,-.30,dark);
+    box(.40,.025,.48,-2.59,1.09,-1.15,steel);
+    for(const Z of [.25,.60])for(const X of [-2.72,-2.46])box(.20,.015,.20,X,1.09,Z,black);
+    box(.69,1.85,.70,-2.50,1.085,1.48,steel,true);
+    table(1.85,.1,1.15,.65);chair(1.85,.80,1);
+    // Quarto: cama, roupeiro e pequeno posto de trabalho.
+    box(1.65,.34,2.10,-1.72,.33,-4.55,oak,true);
+    box(1.60,.24,2.05,-1.72,.62,-4.55,white);
+    box(1.60,.12,1.35,-1.72,.79,-4.25,fabric);
+    box(.66,.12,.38,-1.72,.80,-5.30,white);
+    box(1.65,.85,.10,-1.72,.9,-5.61,oak);
+    box(.48,.50,.48,-.55,.41,-5.22,oak,true);
+    box(1.4,2.05,.60,1.85,1.185,-5.53,oak,true);
+    table(1.94,-3.45,1.35,.65);r.computer(1.94,-3.45);chair(1.94,-2.76,1);
+  }
+  // UAb: duas divisões reais, biblioteca à entrada e sala de aula no fundo.
   {
     const r=room({x:20,z:34,w:16,d:13,h:7,wall:white,roof:steel,floor:mat(0xb8b3a6),doorWidth:2});
-    const {box,table,chair,shelf,computer,light}=r;
+    const {box,table,chair,shelf,computer,light,partition,group}=r;
     for(const X of [-5,0,5]){light(X,-3);light(X,3);}
-    for(const X of [-5.4,-2.5,2.5,5.4])for(const Z of [-1.5,1.8]){
-      table(X,Z,1.75,.8);chair(X,Z+.9);if(Z<0)computer(X,Z-.05);
+    // Parede transversal até ao teto, com passagem central de 2 m.
+    for(const X of [-4.45,4.45])partition(6.90,.20,X,.4,6.84);
+    box(2,4.45,.20,0,4.775,.4,white);
+    // Biblioteca: estantes junto à divisória e mesas de leitura.
+    for(const X of [-6.4,-4.4,4.4,6.4])shelf(X,.78,1.8);
+    for(const X of [-5.0,5.0]){
+      table(X,3.2,2.1,1.0);chair(X-.5,4.1);chair(X+.5,4.1);
+      chair(X-.5,2.3,-1);chair(X+.5,2.3,-1);
     }
-    for(const X of [-5.9,-3.9,3.9,5.9])shelf(X,-5.65,1.8);
-    box(4.2,1.55,.09,0,2.0,-6.32,dark);box(4.0,1.36,.018,0,2.0,-6.26,white);
-    table(0,-4.2,2.0,.85);computer(0,-4.2);
+    // Sala de aula: filas de mesas orientadas para o quadro.
+    for(const X of [-5.2,-2.1,2.1,5.2])for(const Z of [-1.2,-3.25]){
+      table(X,Z,1.7,.70);chair(X,Z+.75);
+    }
+    box(4.8,1.6,.09,0,2.1,-6.27,dark);
+    box(4.6,1.42,.018,0,2.1,-6.21,white);
+    table(0,-5.0,2.0,.75);computer(0,-5.0);
+    // Identificação de ambas as divisões com texto grande.
+    for(const [name,Z,rotation] of [['BIBLIOTECA',.53,0],['SALA DE AULA',.27,Math.PI]]){
+      const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;
+      const ctx=canvas.getContext('2d');ctx.fillStyle='#23384b';ctx.fillRect(0,0,1024,256);
+      ctx.fillStyle='#fff';ctx.font='bold 115px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,512,128,970);
+      const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=16;
+      const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.0,.75),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));
+      sign.position.set(0,3.15,Z);sign.rotation.y=rotation;group.add(sign);
+    }
   }
   // Dachser: 70% do comprimento em X para armazém, 30% para escritório.
   {
