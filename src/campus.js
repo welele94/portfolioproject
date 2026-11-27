@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { dutchFacade } from './architecture.js';
+import { dutchFacade, dutchRow } from './architecture.js';
 import { exteriorMaterial, metricBox, metricCylinder, organicGrass } from './materials.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNavigation } from './navigation.js';
@@ -161,16 +161,31 @@ walk(-25.4,42,20,42,3);
 for(const x of [-25.4,-19,-12.6])walk(x,40,x,42,2.4);
 walk(20,40.5,20,42,2.4);
 // Eixo principal: saída da Casa, praça e porta dos Projetos.
-walkCurve([[-9,42],[-9,31],[-6,23],[-3.4,18.3]],3.2);
+walkCurve([[-9,42],[-8.5,31],[-6,23],[-3.4,18.3]],3.2);
 pavedCircle(0,15,5.6);
 walkCurve([[3.5,11.8],[7.8,7.3],[13.2,5.2],[20,5],[20,2.4]],3.2);
 // Acesso à UAb pelo corredor livre entre os edifícios.
 walkCurve([[4.2,18.4],[8.5,24],[9.2,32],[9.8,42]],2.2);
 // Apartamentos ocidentais e ligação pedonal norte.
-walkCurve([[-4.8,13],[-9,8],[-14,4],[-20,2],[-20,-.5]],2.4);
+// Rua residencial à frente da nova fachada, entre prédio e jardim.
+const residentialRoad={x:-10.4,z:-2.5,w:4.6,d:47};
+plane(residentialRoad.w,residentialRoad.d,residentialRoad.x,residentialRoad.z,road,.075);
+for(let z=-23;z<20;z+=5)plane(.075,1.7,-10.4,z,roadPaint,.106);
+// Passeios de ambos os lados, fora da faixa de rodagem.
+walk(-13.7,-26,-13.7,21,1.7);
+walk(-7.15,-26,-7.15,21,1.5);
+// Ligações aos extremos da rua e à praça, sem pavimento sobre o asfalto.
+walkCurve([[-4.8,13],[-6.2,14],[-7.15,14]],2.0);
+for(let k=0;k<5;k++)plane(4.5,.23,-10.4,13.4+k*.36,roadPaint,.112);
+for(let k=0;k<5;k++)plane(4.5,.23,-10.4,-25.5+k*.36,roadPaint,.112);
+walkCurve([[-7.15,-25],[0,-25]],2.1);
+// Ramais rodoviários transversais nas extremidades, ligados à avenida exterior.
+plane(19.2,4.6,-19.7,23.5,road,.075);
+plane(4.6,4.6,-10.4,21.5,road,.075);
+for(let k=0;k<5;k++)plane(.23,4.5,-9.6+k*.36,23.5,roadPaint,.112);
 walk(0,10,0,-43,3.0);
 // Novos apartamentos em banda, orientados no eixo horizontal.
-walkCurve([[0,-25],[-7,-25],[-15,-25],[-15,-27]],2.3);
+walkCurve([[-13.7,-26],[-15,-26.3],[-15,-27]],1.8);
 // Apartamentos orientais: passagem a sul do edifício.
 walkCurve([[0,-23],[8,-23],[15,-24],[21,-25],[21,-28]],2.3);
 // Fonte: diâmetro 5 m; borda a 0.50 m, água pouco abaixo.
@@ -181,7 +196,7 @@ const fountainWater=new THREE.Mesh(new THREE.CylinderGeometry(2.12,2.12,.05,32),
 fountainWater.position.set(0,HUMAN.fountainRimHeight-.07,15);scene.add(fountainWater);
 const fountainJet=new THREE.Mesh(new THREE.CylinderGeometry(.08,.15,1.10,12),water);
 fountainJet.position.set(0,HUMAN.fountainRimHeight+.49,15);scene.add(fountainJet);
-for(const [x,z] of [[-13,10],[-8,18],[12,11],[15,19],[-5,30],[5,30]]) tree(x,z,.85);
+for(const [x,z] of [[-5,8],[-4.5,22],[12,11],[15,19],[-5,30],[5,30]]) tree(x,z,.85);
 // Bancos: assento a 45 cm (antes ~81 cm), 1.60 x 0.43 m.
 const benchWood=exteriorMaterial('wood','#a1805d');
 for(const [x,z] of [[-3.7,14],[3.7,16],[0,19.5],[-5,27]]) {
@@ -283,7 +298,7 @@ function parkedTruck(x,z){
 parkedTruck(-21,-75.5);parkedTruck(-7,-75.5);parkedTruck(7,-75.5);
 
 // Blocos residenciais à esquerda e ao topo direito.
-for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12],[-15,-33,20,12]]){
+for(const [x,z,w,d] of [[21,-34,14,12],[-15,-33,20,12]]){
   addBoxObstacle(x,z,w,d);
   block(w,11,d,x,5.5,z,building);
   block(w+.25,.34,d+.25,x,11.17,z,roofMat);
@@ -291,8 +306,13 @@ for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12],[-15,-33,20,12]]){
   dutchFacade({scene,x,z,w,d,h:11,floors:4,segments:3});
   label('APARTAMENTOS',x,13.3,z,w*.85);
 }
+// Prédio comprido de três pisos, na faixa residencial ocidental.
+dutchRow({scene,x:-20.2,z:-3,length:40,depth:11.2,height:8.7});
+addBoxObstacle(-20.2,-3,11.2,40);
+label('APARTAMENTOS',-20.2,10.6,-3,10.5);
 // Árvores periféricas.
-for(let z=-21;z<=41;z+=8){ tree(-25.5,z,.85); if(z>20)tree(25.5,z,.85); }
+for(const z of [27,41])tree(-25.5,z,.85);
+for(let z=25;z<=41;z+=8)tree(25.5,z,.85);
 // O antigo limite norte passa a ser o acesso pedonal à Dachser.
 
 // Vegetação baixa: distribuição determinística em manchas, sem colisões.
@@ -329,9 +349,12 @@ gl_Position=projectionMatrix*mvPosition;
 function addGardenPlants(){
   let seed=84621;
   function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
-  const buildings=[[-19,34,19,12],[20,34,16,13],[0,-56,51,26],[20,-8,17,20],[-20,-11,12,21],[21,-34,14,12],[-15,-33,20,12]];
+  const buildings=[[-19,34,19,12],[20,34,16,13],[0,-56,51,26],[20,-8,17,20],[-20.2,-3,11.2,40],[21,-34,14,12],[-15,-33,20,12]];
   function clear(x,z){
     if(Math.abs(x)>25.9||Math.abs(z)>42)return false;
+    if(Math.abs(x-residentialRoad.x)<residentialRoad.w/2+.18&&Math.abs(z-residentialRoad.z)<residentialRoad.d/2+.18)return false;
+    if(Math.abs(x+19.7)<9.6+.18&&Math.abs(z-23.5)<2.3+.18)return false;
+    if(Math.abs(x+10.4)<2.3+.18&&Math.abs(z-21.5)<2.3+.18)return false;
     if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.5&&Math.abs(z-Z)<D/2+.5))return false;
     if(pedestrianAreas.some(p=>pathDistance(x,z,p)<.65))return false;
     return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.32:Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3);
@@ -403,6 +426,9 @@ function addGardenPlants(){
   // Flores baixas nas margens da relva alta, sem invadir o pavimento.
   function flowerClear(x,z){
     if(Math.abs(x)>25.9||Math.abs(z)>42)return false;
+    if(Math.abs(x-residentialRoad.x)<residentialRoad.w/2+.18&&Math.abs(z-residentialRoad.z)<residentialRoad.d/2+.18)return false;
+    if(Math.abs(x+19.7)<9.6+.18&&Math.abs(z-23.5)<2.3+.18)return false;
+    if(Math.abs(x+10.4)<2.3+.18&&Math.abs(z-21.5)<2.3+.18)return false;
     if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.24&&Math.abs(z-Z)<D/2+.24))return false;
     if(pedestrianAreas.some(p=>pathDistance(x,z,p)<.16))return false;
     return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.20:Math.abs(x-o.x)<o.w/2+.20&&Math.abs(z-o.z)<o.d/2+.20);
