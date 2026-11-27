@@ -13,6 +13,9 @@ function noise(x,y,n,seed){
   return (h(0,0)*(1-a)+h(1,0)*a)*(1-b)+(h(0,1)*(1-a)+h(1,1)*a)*b;
 }
 const configs={
+  parquet:{scale:2.4,roughness:.58,bump:.003,color:[202,161,117]},
+  terrazzo:{scale:1.2,roughness:.58,bump:.002,color:[211,211,203]},
+  ceramic:{scale:1.2,roughness:.42,bump:.004,color:[224,225,222]},
   brick:{scale:1.2,roughness:.94,bump:.012,color:[174,112,83]},
   grass:{scale:7.3,roughness:.96,bump:.009,color:[185,198,160]},
   pavement:{scale:2,roughness:.91,bump:.012,color:[217,211,197]},
@@ -49,6 +52,21 @@ function texturePair(kind){
       const blades=noise(x,y,128,19)-.5;
       v=.91+.24*macro+.18*mid+.22*fine+.23*blades;
       g=12*macro;r=8*mid;b=.48+.35*blades+.18*fine;
+    }else if(kind==='parquet'){
+      const row=Math.floor(x*16),u=fract(y*3+(row%3)/3),w=fract(x*16);
+      const edge=Math.min(u*0.8,(1-u)*0.8,w*.15,(1-w)*.15);
+      const joint=Math.max(0,Math.min(1,edge/.0035));
+      const plank=hash(row,Math.floor(y*3+(row%3)/3)%3,51)-.5;
+      const grain=Math.sin(x*Math.PI*2*150+noise(x,y,8,59)*4);
+      v=(.75+.25*joint)*(.96+.22*plank+.06*grain+.07*fine);b=.28+.38*joint+.055*grain;
+    }else if(kind==='terrazzo'){
+      const speck=hash(Math.floor(px/3),Math.floor(py/3),57);
+      v=.96+.06*mid+.04*fine+(speck>.91?.12:speck<.10?-.24:0);
+      b=.50+.08*fine;
+    }else if(kind==='ceramic'){
+      const u=fract(x*4),w=fract(y*4),edge=Math.min(u,1-u,w,1-w);
+      const joint=Math.max(0,Math.min(1,(edge-.009)/.012));
+      v=(.72+.28*joint)*(.97+.04*mid+.03*fine);b=.25+.45*joint;
     }else if(kind==='brick'){
       const rows=16,cols=5,row=Math.floor(y*rows);
       const u=fract(x*cols+(row%2)*.5),w=fract(y*rows);

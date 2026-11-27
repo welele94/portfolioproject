@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { dutchFacade } from './architecture.js';
-import { exteriorMaterial, metricBox } from './materials.js';
+import { exteriorMaterial, interiorMaterial, metricBox } from './materials.js';
 
 // Modelação procedural dos interiores. Todas as dimensões em metros.
 export function createInteriors({scene,obstacles}){
@@ -8,7 +8,7 @@ export function createInteriors({scene,obstacles}){
   const mat=(color)=>new THREE.MeshStandardMaterial({color,roughness:.78});
   const oak=mat(0xb78a58),dark=mat(0x303b48),white=mat(0xece9df),black=mat(0x151b21),steel=mat(0x687785),blue=mat(0x276ba5),yellow=mat(0xe7ae28),cardboard=mat(0xb38a5d),fabric=mat(0x708881);
   const lit=new THREE.MeshBasicMaterial({color:0xe9f3ff});
-  function room({x,z,w,d,h,wall,roof,floor,doorWidth=1.6}){
+  function room({x,z,w,d,h,wall,roof,floor,doorWidth=1.6,interiorWall=wall}){
     const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);
     const top=new THREE.Group();group.add(top);
     function box(W,H,D,X,Y,Z,M,collide=false,parent=group){
@@ -45,7 +45,7 @@ export function createInteriors({scene,obstacles}){
     }
     rooms.push({update});
     function light(X,Z,color=0xffecd4){const l=new THREE.PointLight(color,18,8,2);l.position.set(X,3.0,Z);group.add(l);box(.85,.06,.36,X,h-.12,Z,lit,false,top);}
-    function partition(W,D,X,Z,H=2.7){box(W,H,D,X,.16+H/2,Z,wall,true);}
+    function partition(W,D,X,Z,H=2.7){box(W,H,D,X,.16+H/2,Z,interiorWall,true);}
     function table(X,Z,W=1.5,D=.75){
       box(W,.09,D,X,.93,Z,oak,true);
       for(const a of [-1,1])for(const b of [-1,1])box(.075,.75,.075,X+a*(W/2-.09),.535,Z+b*(D/2-.09),dark);
@@ -78,10 +78,32 @@ export function createInteriors({scene,obstacles}){
     dutchFacade({scene,x:X,z:34,w:6.2,d:12,h:7.4,floors:3});
   }
   {
-    const r=room({x:-19,z:34,w:6.2,d:12,h:7.4,wall:exteriorMaterial('plaster',0xb7c8c1),roof:exteriorMaterial('roof',0xb26954),floor:oak});
+    const oak=interiorMaterial('wood',0xe8c69b),fabric=interiorMaterial('upholstery',0x9ca99b);
+    const white=interiorMaterial('laminate',0xfffdf5),dark=interiorMaterial('laminate',0x4c4946);
+    const steel=interiorMaterial('brushed',0xc4c9cf,{metalness:.25});
+    const warmWall=interiorMaterial('plaster',0xfff6e7),trim=interiorMaterial('laminate',0xf3eee3);
+    const r=room({x:-19,z:34,w:6.2,d:12,h:7.4,wall:warmWall,interiorWall:warmWall,roof:exteriorMaterial('roof',0xb26954),floor:interiorMaterial('parquet',0xffffff)});
     const {box,light,partition,table,chair}=r;
     dutchFacade({scene,x:-19,z:34,w:6.2,d:12,h:7.4,floors:3,roofParent:r.top});
     light(0,3);light(0,-.8);light(0,-4);
+    // Teto à escala doméstica; a fachada mantém os pisos exteriores decorativos.
+    box(5.76,.10,11.56,0,3.18,0,warmWall,false,r.top);
+    for(const X of [-2.84,2.84])box(.065,.13,11.5,X,.225,0,trim);
+    box(5.7,.13,.065,0,.225,-5.84,trim);
+    // Azulejos e pavimento cerâmico na zona da cozinha.
+    const ceramic=interiorMaterial('ceramic',0xf0f0eb);
+    box(1.48,.018,3.6,-2.16,.172,-.10,ceramic);
+    box(.025,.68,2.8,-2.965,1.44,-.30,ceramic);
+    // Painéis interiores decorativos que correspondem às janelas da fachada.
+    const pane=mat(0x7794aa);
+    for(const Z of [3.9,.8,-2.3,-4.8]){
+      box(.045,1.30,1.08,-2.86,1.82,Z,trim);
+      box(.025,1.17,.95,-2.83,1.82,Z,pane);
+      box(.03,1.18,.05,-2.81,1.82,Z,trim);
+    }
+    // Abertura do quarto com aro de madeira, sem novo obstáculo na passagem.
+    for(const X of [1.09,2.79])box(.075,2.45,.24,X,1.385,-2.05,trim);
+    box(1.78,.09,.24,1.94,2.57,-2.05,trim);
     // Sala e cozinha em open space; quarto separado por parede com vão.
     partition(4.0,.16,-.95,-2.05,3);
     box(1.78,.65,.16,1.94,2.835,-2.05,white);
@@ -90,7 +112,7 @@ export function createInteriors({scene,obstacles}){
     box(.18,.70,2.35,-2.72,.92,3.3,fabric);
     for(const Z of [2.22,4.38])box(.87,.44,.17,-2.36,.86,Z,fabric);
     box(.58,.12,1.05,-1.35,.65,3.3,oak,true);
-    box(2.15,.025,2.85,-1.65,.177,3.3,mat(0xc0ad99));
+    box(2.15,.025,2.85,-1.65,.177,3.3,interiorMaterial('upholstery',0xc7b19c));
     box(.40,.48,1.65,2.66,.40,3.4,oak,true);
     box(.08,.92,1.43,2.54,1.10,3.4,black);
     // Cozinha linear e pequena mesa, sem ocupar o acesso ao quarto.
@@ -112,12 +134,41 @@ export function createInteriors({scene,obstacles}){
   }
   // UAb: duas divisões reais, biblioteca à entrada e sala de aula no fundo.
   {
-    const r=room({x:20,z:34,w:16,d:13,h:7,wall:exteriorMaterial('plaster',0xf3f0e9),roof:exteriorMaterial('metal',0x7d8b98),floor:mat(0xb8b3a6),doorWidth:2});
+    const libraryWall=interiorMaterial('plaster',0xe9e5d7);
+    const classroomWall=interiorMaterial('plaster',0xe5edf5);
+    const libraryFloor=interiorMaterial('parquet',0xe5d3b5);
+    const classroomFloor=interiorMaterial('terrazzo',0xf0f2f4);
+    const frame=interiorMaterial('brushed',0x536c7e,{metalness:.12});
+    const bluePanel=interiorMaterial('acoustic',0x557c9c);
+    const r=room({x:20,z:34,w:16,d:13,h:7,wall:libraryWall,interiorWall:libraryWall,roof:exteriorMaterial('metal',0x7d8b98),floor:libraryFloor,doorWidth:2});
     const {box,table,chair,shelf,computer,light,partition,group}=r;
     for(const X of [-5,0,5]){light(X,-3);light(X,3);}
-    // Parede transversal até ao teto, com passagem central de 2 m.
-    for(const X of [-4.45,4.45])partition(6.90,.20,X,.4,6.84);
-    box(2,4.45,.20,0,4.775,.4,white);
+    // Separação física completa: parede espessa e portal de 2 m.
+    for(const X of [-4.445,4.445])box(6.89,6.84,.32,X,3.58,.4,libraryWall,true);
+    box(2,4.45,.32,0,4.775,.4,libraryWall);
+    // Materiais distintos dos dois lados, com soleira e portal em azul UAb.
+    box(15.56,.018,6.49,0,.172,-2.845,classroomFloor);
+    for(const X of [-4.445,4.445])box(6.89,3.3,.025,X,1.81,.225,classroomWall);
+    for(const X of [-1.045,1.045])box(.09,2.39,.43,X,1.355,.4,frame);
+    box(2.18,.13,.43,0,2.55,.4,frame);
+    box(2,.019,.42,0,.174,.4,frame);
+    // Revestimentos próprios e teto mais baixo para distinguir os ambientes.
+    for(const X of [-7.86,7.86]){
+      box(.025,3.05,6.38,X,1.685,-2.87,classroomWall);
+      box(.045,.15,6.38,X,.245,-2.87,frame);
+      box(.045,.15,5.75,X,.245,3.34,oak);
+    }
+    box(15.55,3.05,.025,0,1.685,-6.365,classroomWall);
+    box(15.55,.11,5.77,0,3.65,3.34,libraryWall,false,r.top);
+    box(15.55,.11,6.35,0,3.48,-2.95,classroomWall,false,r.top);
+    for(const X of [-5.2,0,5.2]){
+      box(2.2,.055,.22,X,3.56,3.1,lit,false,r.top);
+      box(2.2,.055,.22,X,3.39,-3.0,lit,false,r.top);
+    }
+    for(const X of [-5.8,5.8])box(3.0,1.25,.04,X,2.40,-6.32,bluePanel);
+    // Faixa de cor na biblioteca e painel de referência na sala de aulas.
+    for(const X of [-4.5,4.5])box(6.7,.24,.035,X,2.85,.58,oak);
+    box(4.95,.11,.08,0,3.1,-6.23,frame);
     // Biblioteca: estantes junto à divisória e mesas de leitura.
     for(const X of [-6.4,-4.4,4.4,6.4])shelf(X,.78,1.8);
     for(const X of [-5.0,5.0]){
