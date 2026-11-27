@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { dutchFacade } from './architecture.js';
 import { exteriorMaterial, interiorMaterial, metricBox } from './materials.js';
 
@@ -11,6 +12,7 @@ export function createInteriors({scene,obstacles}){
   function room({x,z,w,d,h,wall,roof,floor,doorWidth=1.6,interiorWall=wall}){
     const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);
     const top=new THREE.Group();group.add(top);
+    const localLights=[];
     function box(W,H,D,X,Y,Z,M,collide=false,parent=group){
       const o=new THREE.Mesh(metricBox(W,H,D,M),M);
       o.position.set(X,Y,Z);o.castShadow=parent!==top;o.receiveShadow=true;parent.add(o);
@@ -42,9 +44,13 @@ export function createInteriors({scene,obstacles}){
       if(Math.hypot(Math.max(0,Math.abs(lx)-half),Math.max(0,Math.abs(lz)-.043))>.36){angle=a;sync(a);}
       const inside=Math.abs(p.x-x)<w/2&&Math.abs(p.z-z)<d/2;
       top.visible=!(inside&&mode==='aerial');
+      const nearby=mode==='first'&&Math.abs(p.x-x)<w/2+2&&Math.abs(p.z-z)<d/2+2;
+      // Só as duas luzes mais próximas entram no shader global.
+      const closest=nearby?localLights.slice().sort((a,b)=>Math.hypot(p.x-x-a.position.x,p.z-z-a.position.z)-Math.hypot(p.x-x-b.position.x,p.z-z-b.position.z)).slice(0,2):[];
+      for(const l of localLights)l.visible=closest.includes(l);
     }
     rooms.push({update});
-    function light(X,Z,color=0xffecd4){const l=new THREE.PointLight(color,18,8,2);l.position.set(X,3.0,Z);group.add(l);box(.85,.06,.36,X,h-.12,Z,lit,false,top);}
+    function light(X,Z,color=0xffecd4){const l=new THREE.PointLight(color,18,8,2);l.position.set(X,3.0,Z);l.visible=false;localLights.push(l);group.add(l);box(.85,.06,.36,X,h-.12,Z,lit,false,top);}
     function partition(W,D,X,Z,H=2.7){box(W,H,D,X,.16+H/2,Z,interiorWall,true);}
     function table(X,Z,W=1.5,D=.75){
       box(W,.09,D,X,.93,Z,oak,true);
@@ -227,6 +233,7 @@ export function createInteriors({scene,obstacles}){
     box(14.85,.018,25.55,17.73,.172,0,officeFloor);
     box(14.85,.10,25.55,17.73,3.55,0,white,false,r.top);
     for(const X of [-20,-11,-2,7,18])for(const Z of [-8,2,9])light(X,Z,0xe8f2ff);
+    const rackStart=r.group.children.length;
     // Racks com quatro níveis, corredores de 3–4 m e paletes em escala humana.
     for(const X of [-22,-16,-10,-4,2,7])for(const Z of [-9,-4,1]){
       const W=2.2,D=3.8;
@@ -240,6 +247,21 @@ export function createInteriors({scene,obstacles}){
           box(.07,.95,1.05,X,Y+.65,Z+P,white);
         }
       }
+    }
+    // Agrupar caixas, paletes e prateleiras em lotes por material e corredor.
+    const rackBatches=new Map();
+    for(const mesh of r.group.children.slice(rackStart)){
+      if(!mesh.isMesh)continue;
+      const key=mesh.material.uuid+':'+Math.floor(mesh.position.x/6)+':'+Math.floor(mesh.position.z/10);
+      if(!rackBatches.has(key))rackBatches.set(key,[]);
+      rackBatches.get(key).push(mesh);
+    }
+    for(const batch of rackBatches.values()){
+      if(batch.length<2)continue;
+      const parts=batch.map(mesh=>{mesh.updateMatrix();return mesh.geometry.clone().applyMatrix4(mesh.matrix);});
+      const geometry=mergeGeometries(parts,false);parts.forEach(g=>g.dispose());if(!geometry)continue;
+      const merged=new THREE.Mesh(geometry,batch[0].material);merged.castShadow=true;merged.receiveShadow=true;r.group.add(merged);
+      for(const mesh of batch){mesh.removeFromParent();mesh.geometry.dispose();}
     }
     // Marcações de segurança no chão e corredor pedonal junto ao escritório.
     for(const X of [-24,-19,-13,-7,-1,5,9])box(.075,.012,21,X,.169,-1.0,stripe);

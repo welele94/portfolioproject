@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { dutchFacade, dutchRow } from './architecture.js';
 import { exteriorMaterial, metricBox, metricCylinder, organicGrass } from './materials.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNavigation } from './navigation.js';
 import { createProjectsHall } from './projects-hall.js';
@@ -22,9 +23,11 @@ scene.fog = new THREE.Fog('#b9d4e8', 105, 175);
 const camera = new THREE.PerspectiveCamera(48, 1, .1, 220);
 camera.position.set(46, 68, 78);
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.autoUpdate=false;
+renderer.shadowMap.needsUpdate=true;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.55;
@@ -33,7 +36,7 @@ scene.add(new THREE.HemisphereLight(0xe9f3ff, 0x6e8057, 2.0));
 const sun = new THREE.DirectionalLight(0xffeed3, 2.7);
 sun.position.set(-35, 66, 24);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.camera.left = -80;
 sun.shadow.camera.right = 80;
 sun.shadow.camera.top = 115;
@@ -528,7 +531,7 @@ addGardenPlants();
 function updateGrassLOD(camera,mode){
   for(const cell of grassCells){
     const d=Math.hypot(camera.position.x-cell.x,camera.position.z-cell.z,camera.position.y-0.8);
-    const next=mode==='aerial'?2:d<11?0:d<24?1:d<58?2:-1;
+    const next=mode==='aerial'?2:d<8?0:d<19?1:d<50?2:-1;
     if(next===cell.current)continue;
     cell.levels.forEach((mesh,i)=>mesh.visible=i===next);cell.current=next;
   }
@@ -596,6 +599,39 @@ const navigation=createNavigation({
   spawn:{x:-19,z:42},destination,eyeHeight:HUMAN.eyeHeight
 });
 
+// Agrupar geometria estática por material e célula espacial, mantendo portas,
+// quadros, instâncias, luzes e grupos de teto com comportamento próprio.
+const dynamicMeshes=new Set([...projectsHall.interactables,...interiors.interactables].flatMap(a=>a.meshes));
+function batchStatic(){
+  scene.updateMatrixWorld(true);
+  const buckets=new Map(),tmp=new THREE.Vector3();
+  scene.traverse(o=>{
+    if(!o.isMesh||o.isInstancedMesh||o.userData.decoration||dynamicMeshes.has(o)||Array.isArray(o.material)||o.material.transparent||o.material.depthTest===false||o===destinationMarker) return;
+    // Evitar mover objetos de grupos que podem rodar ou desaparecer.
+    if(o.parent!==scene && (o.parent.parent!==scene || o.parent===humanReference))return;
+    if(o.parent!==scene && o.parent.children.some(child=>dynamicMeshes.has(child)||child.isLight))return;
+    if(o.parent!==scene && o.parent.children.some(child=>child.isGroup && child.children.some(m=>dynamicMeshes.has(m))))return;
+    if(o.geometry.type!=='BoxGeometry' || o.geometry.attributes.position.count!==24)return;
+    const dim=o.geometry.parameters;if(dim.width>8||dim.depth>8)return;
+    if(o.parent!==scene && o.parent.children.some(child=>child.isGroup))return;
+    o.getWorldPosition(tmp);
+    const key=[o.material.uuid,Math.floor(tmp.x/12),Math.floor(tmp.z/12),o.castShadow,o.receiveShadow].join(':');
+    if(!buckets.has(key))buckets.set(key,[]);
+    buckets.get(key).push(o);
+  });
+  for(const meshes of buckets.values()){
+    if(meshes.length<4)continue;
+    const geos=meshes.map(o=>o.geometry.clone().applyMatrix4(o.matrixWorld));
+    const geometry=mergeGeometries(geos,false);geos.forEach(g=>g.dispose());
+    if(!geometry)continue;
+    geometry.computeBoundingSphere();
+    const mesh=new THREE.Mesh(geometry,meshes[0].material);
+    mesh.castShadow=meshes[0].castShadow;mesh.receiveShadow=meshes[0].receiveShadow;
+    scene.add(mesh);
+    for(const o of meshes)o.removeFromParent();
+  }
+}
+batchStatic();
 const prompt=document.querySelector('#project-prompt');
 const modal=document.querySelector('#project-modal');
 const title=document.querySelector('#project-title');
@@ -604,17 +640,21 @@ const description=document.querySelector('#project-description');
 const projectLink=document.querySelector('#project-link');
 const projectImage=document.querySelector('#project-image');
 const raycaster=new THREE.Raycaster();
-const targets=new Map();
+const targets=new Map(),interactionPosition=new THREE.Vector3();
 for(const action of [...projectsHall.interactables,...interiors.interactables])
   for(const mesh of action.meshes)targets.set(mesh,action);
 function getInteraction(){
   if(navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
-  scene.updateMatrixWorld(true);
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
   raycaster.far=3;
-  const hit=raycaster.intersectObjects(scene.children.filter(o=>!o.userData.decoration),true).find(h=>h.object.visible&&h.object.material?.depthTest!==false);
-  return hit?targets.get(hit.object)||null:null;
+  const candidates=[...targets.keys()].filter(o=>{o.getWorldPosition(interactionPosition);return interactionPosition.distanceToSquared(camera.position)<25;});
+  if(!candidates.length)return null;
+  const hit=raycaster.intersectObjects(candidates,false).find(h=>h.object.visible);
+  if(!hit)return null;
+  raycaster.far=hit.distance+.015;
+  const blocker=raycaster.intersectObjects(scene.children.filter(o=>!o.userData.decoration&&o.visible),true).find(h=>h.object.visible&&h.object.material?.depthTest!==false);
+  return blocker?targets.get(blocker.object)||null:null;
 }
 function closeProject(){
   if(modal)modal.hidden=true;
@@ -646,14 +686,22 @@ window.addEventListener('keydown',(event)=>{
 function resize(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(canvas);resize();
 const clock=new THREE.Clock();
+let interactionTick=0,cachedAction=null,shadowTick=0;
+let frames=0,frameTime=0;
+const fpsLabel=document.createElement('span');fpsLabel.style.cssText='position:fixed;right:12px;bottom:12px;background:#172634dd;color:white;padding:5px 8px;border-radius:5px;font:12px system-ui;pointer-events:none;z-index:5';document.body.appendChild(fpsLabel);
 renderer.setAnimationLoop(()=>{
-  const dt=Math.min(clock.getDelta(),.05);
+  const rawDt=clock.getDelta(),dt=Math.min(rawDt,.05);
+  frames++;frameTime+=rawDt;shadowTick+=rawDt;
+  if(frameTime>=1){fpsLabel.textContent=Math.round(frames/frameTime)+' FPS · '+renderer.info.render.calls+' draws';frames=0;frameTime=0;}
+  if(shadowTick>=.25){renderer.shadowMap.needsUpdate=true;shadowTick=0;}
   gardenWindTime.value+=dt;
   if(!modal || modal.hidden)navigation.update(dt);
   const playerPosition=navigation.getPlayerPosition();
   projectsHall.update(dt,playerPosition,navigation.getMode());
   interiors.update(dt,playerPosition,navigation.getMode());
-  const action=getInteraction();
+  interactionTick+=dt;
+  if(interactionTick>=.10){interactionTick=0;cachedAction=getInteraction();}
+  const action=cachedAction;
   if(prompt){
     prompt.hidden=!action;
     if(action)prompt.textContent='E — '+action.label();

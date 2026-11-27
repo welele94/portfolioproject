@@ -317,13 +317,14 @@ export function createProjectsHall({scene, obstacles}) {
   const rackLabel=new THREE.Mesh(new THREE.PlaneGeometry(.61,.15),new THREE.MeshBasicMaterial({map:signTexture('NETWORK','SWITCH · UPS'),toneMapped:false}));
   rackLabel.position.set(rx,2.34,rz+.54);scene.add(rackLabel);
 
+  const labLights=[];
   // Luzes locais coloridas, sem sombras adicionais pesadas.
   for(const [x,z,color] of [[12.5,-7,0x15bfff],[27.5,-7,0x9b45ff],[20,-15,0x536bff]]){
     const light=new THREE.PointLight(color,15,9,2);
-    light.position.set(x,3.4,z);scene.add(light);
+    light.position.set(x,3.4,z);light.visible=false;labLights.push(light);scene.add(light);
   }
   const mainLight=new THREE.PointLight(0xa4c4ff,4,13);
-  mainLight.position.set(20,4.2,-8);scene.add(mainLight);
+  mainLight.position.set(20,4.2,-8);mainLight.visible=false;labLights.push(mainLight);scene.add(mainLight);
 
   // O teto permanece fechado em primeira pessoa; apenas a vista aérea permite inspeção.
   function update(dt,position,mode='first'){
@@ -332,6 +333,7 @@ export function createProjectsHall({scene, obstacles}) {
     // Não empurrar nem prender o jogador durante a animação.
     if(!touchesDoor(position,next)){angle=next;syncDoor(angle);}
     const inside=position.x>11.7 && position.x<28.3 && position.z>-17.75 && position.z<1.85;
+    for(const light of labLights)light.visible=inside&&mode==='first';
     roof.visible=mode!=='aerial'||!inside;
     ceilingDetails.visible=roof.visible;
     return inside;
