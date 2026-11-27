@@ -312,27 +312,35 @@ function addGardenPlants(){
   }
   const flowers=[];
   const palette=[0xfff4dd,0xfff7ef,0xf4c448,0xb18ce3,0xe9a4c5,0xaac6ff];
-  // Procurar faixas de terra vazias entre o caminho e a vegetação.
+  // Cobertura densa das margens, com pequenos agrupamentos de cor.
+  // Evitar duplicações nas interseções através de uma grelha de ocupação.
+  const occupied=new Set();
+  function addFlower(x,z,h,size,kind){
+    const key=Math.floor(x/.12)+':'+Math.floor(z/.12);
+    if(occupied.has(key)||flowers.length>=6500)return;
+    occupied.add(key);flowers.push({x,z,h,size,kind,a:rand()*Math.PI*2});
+  }
   for(const p of pedestrianAreas){
     const horizontal=p.w>=p.d,len=horizontal?p.w:p.d;
-    for(const side of [-1,1])for(let t=-len/2+.35;t<len/2-.35;t+=.85){
-      if(rand()>.50)continue;
-      const offset=.24+rand()*.16;
-      const cx=horizontal?p.x+t:p.x+side*(p.w/2+offset);
-      const cz=horizontal?p.z+side*(p.d/2+offset):p.z+t;
-      if(!flowerClear(cx,cz)||clear(cx,cz))continue;
+    for(const side of [-1,1])for(let t=-len/2+.18;t<len/2-.18;t+=.28){
+      if(rand()>.92)continue;
       const kind=Math.floor(rand()*palette.length);
-      for(let k=0;k<4;k++){
-        const x=cx+(rand()-.5)*.30,z=cz+(rand()-.5)*.30;
-        if(flowerClear(x,z)&&!clear(x,z))flowers.push({x,z,h:.24+rand()*.22,size:.95+rand()*.65,kind,a:rand()*Math.PI*2});
+      for(let k=0;k<8;k++){
+        const along=t+(rand()-.5)*.32,offset=.20+rand()*.45;
+        const x=horizontal?p.x+along:p.x+side*(p.w/2+offset);
+        const z=horizontal?p.z+side*(p.d/2+offset):p.z+along;
+        if(flowerClear(x,z)&&!clear(x,z))addFlower(x,z,.24+rand()*.26,1.15+rand()*.85,kind);
       }
     }
   }
-  // Manter as flores altas acima do prado em manchas naturais.
-  const centers=[[-5,12],[-4,20],[9,16],[12,21],[-13,8],[-6,28],[7,30],[11,8],[-5,4],[12,1],[-13,19],[3,-13],[-5,-18]];
-  for(const [cx,cz] of centers)for(let k=0;k<40;k++){
-    const a=rand()*Math.PI*2,r=Math.sqrt(rand())*1.65,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r;
-    if(clear(x,z))flowers.push({x,z,h:.95+rand()*.38,size:1.35+rand()*.65,kind:Math.floor(rand()*palette.length),a:rand()*Math.PI*2});
+  // Manchas densas e visíveis acima da relva, sem cobrir todo o prado.
+  const centers=[[-5,12],[-4,20],[9,16],[12,21],[-13,8],[-6,28],[7,30],[11,8],[-5,4],[12,1],[-13,19],[3,-13],[-5,-18],[-18,18],[12,17],[-5,-12],[9,25],[-14,25],[3,-18],[7,-9],[15,10],[-5,32]];
+  for(const [cx,cz] of centers){
+    const kind=Math.floor(rand()*palette.length);
+    for(let k=0;k<110;k++){
+      const a=rand()*Math.PI*2,r=Math.sqrt(rand())*2.15,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r;
+      if(clear(x,z))addFlower(x,z,1.10+rand()*.40,1.45+rand()*.75,rand()<.75?kind:Math.floor(rand()*palette.length));
+    }
   }
   // Cada flor usa um único disco de pétalas de baixo custo, em vez de várias esferas.
   function blossomGeometry(count,inner,outer,wide){
@@ -349,9 +357,9 @@ function addGardenPlants(){
   const stemMat=windMaterial(new THREE.MeshLambertMaterial({color:0x527b36}));
   const flowerMat=windMaterial(new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide}));
   const heartMat=windMaterial(new THREE.MeshLambertMaterial({color:0xf3be38}));
-  const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.005,.0075,1,5,3),stemMat,flowers.length);
+  const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.005,.0075,1,4,2),stemMat,flowers.length);
   const petals=new THREE.InstancedMesh(blossomGeometry(6,.012,.057,.018),flowerMat,flowers.length);
-  const hearts=new THREE.InstancedMesh(new THREE.SphereGeometry(1,6,4),heartMat,flowers.length);
+  const hearts=new THREE.InstancedMesh(new THREE.SphereGeometry(1,5,3),heartMat,flowers.length);
   function finish(mesh){mesh.userData.decoration=true;mesh.castShadow=false;mesh.receiveShadow=false;mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();mesh.boundingSphere.radius+=1;scene.add(mesh);}
   flowers.forEach((f,i)=>{
     dummy.rotation.set(0,0,0);dummy.position.set(f.x,.025+f.h/2,f.z);dummy.scale.set(1,f.h,1);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);
