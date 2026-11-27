@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { dutchFacade } from './architecture.js';
 import { exteriorMaterial, metricBox } from './materials.js';
 
 // Modelação procedural dos interiores. Todas as dimensões em metros.
@@ -63,7 +64,7 @@ export function createInteriors({scene,obstacles}){
       obstacles.push({type:'box',x:x+X,z:z+Z,w:W,d:.4});
       for(let j=0;j<4;j++){const Y=.27+j*.53;box(W,.07,.4,X,Y,Z,oak);for(let k=0;k<Math.floor((W-.2)/.14);k++)box(.10,.29+(k%3)*.035,.25,X-W/2+.15+k*.14,Y+.19,Z,[blue,fabric,cardboard,dark][(k+j)%4]);}
     }
-    return {box,light,partition,table,chair,computer,shelf,group};
+    return {box,light,partition,table,chair,computer,shelf,group,top};
   }
   // Apenas o prédio central é a casa. Os vizinhos são cenário.
   for(const [X,color] of [[-25.4,0xc5b4a3],[-12.6,0xd0b3a8]]){
@@ -74,10 +75,12 @@ export function createInteriors({scene,obstacles}){
     roof.position.set(X,7.675,34);roof.castShadow=true;scene.add(roof);
     const door=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.15,.12),dark);
     door.position.set(X,1.075,40.06);scene.add(door);
+    dutchFacade({scene,x:X,z:34,w:6.2,d:12,h:7.4,floors:3});
   }
   {
     const r=room({x:-19,z:34,w:6.2,d:12,h:7.4,wall:exteriorMaterial('plaster',0xb7c8c1),roof:exteriorMaterial('roof',0xb26954),floor:oak});
     const {box,light,partition,table,chair}=r;
+    dutchFacade({scene,x:-19,z:34,w:6.2,d:12,h:7.4,floors:3,roofParent:r.top});
     light(0,3);light(0,-.8);light(0,-4);
     // Sala e cozinha em open space; quarto separado por parede com vão.
     partition(4.0,.16,-.95,-2.05,3);

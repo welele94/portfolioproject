@@ -13,6 +13,7 @@ function noise(x,y,n,seed){
   return (h(0,0)*(1-a)+h(1,0)*a)*(1-b)+(h(0,1)*(1-a)+h(1,1)*a)*b;
 }
 const configs={
+  brick:{scale:1.2,roughness:.94,bump:.012,color:[174,112,83]},
   grass:{scale:7.3,roughness:.96,bump:.009,color:[185,198,160]},
   pavement:{scale:2,roughness:.91,bump:.012,color:[217,211,197]},
   asphalt:{scale:2,roughness:.96,bump:.006,color:[164,165,165]},
@@ -48,6 +49,21 @@ function texturePair(kind){
       const blades=noise(x,y,128,19)-.5;
       v=.91+.24*macro+.18*mid+.22*fine+.23*blades;
       g=12*macro;r=8*mid;b=.48+.35*blades+.18*fine;
+    }else if(kind==='brick'){
+      const rows=16,cols=5,row=Math.floor(y*rows);
+      const u=fract(x*cols+(row%2)*.5),w=fract(y*rows);
+      const edge=Math.min(u*1.2/cols,(1-u)*1.2/cols,w*1.2/rows,(1-w)*1.2/rows);
+      const joint=Math.max(0,Math.min(1,(edge-.003)/.004));
+      const brick=hash((Math.floor(x*cols+(row%2)*.5)+cols)%cols,row,77)-.5;
+      v=.94+.30*brick+.12*mid+.09*fine;
+      const mortar=143+fine*15+mid*10;
+      r=(mortar-cfg.color[0]*v)*(1-joint);
+      g=(mortar-cfg.color[1]*v)*(1-joint);
+      img.data[k+2]=clamp(cfg.color[2]*v*joint+mortar*(1-joint));
+      b=.22+.58*joint+.10*fine;
+      img.data[k]=clamp(cfg.color[0]*v+r);img.data[k+1]=clamp(cfg.color[1]*v+g);
+      img.data[k+3]=255;hm.data[k]=hm.data[k+1]=hm.data[k+2]=clamp(b*255);hm.data[k+3]=255;
+      continue;
     }else if(kind==='pavement'){
       const rows=8,cols=6,row=Math.floor(y*rows);
       const u=fract(x*cols+(row%2)*.5),w=fract(y*rows);

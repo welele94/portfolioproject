@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { dutchFacade } from './architecture.js';
 import { exteriorMaterial, metricBox, metricCylinder, organicGrass } from './materials.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNavigation } from './navigation.js';
@@ -176,7 +177,7 @@ for(const [x,z] of [[-6,8],[8,11],[-7,27],[7,27]]) {
 
 // Casa, UAb e Dachser: volumes transitáveis e mobiliário procedural.
 const interiors=createInteriors({scene,obstacles});
-label('CASA',-19,8.4,34,14);
+label('CASA',-19,10.1,34,14);
 label('UAb',20,7.65,34,13.6);
 label('DACHSER',0,8.65,-33,20.4);
 
@@ -192,8 +193,14 @@ billboard('One more thing...',8,28);
 // Dachser: topo, mais distante e opcional.
 
 // Blocos residenciais à esquerda e ao topo direito.
-structure('APARTAMENTOS',-20,-11,12,21,11,roofMat,4);
-structure('APARTAMENTOS',21,-34,14,12,11,roofMat,4);
+for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12]]){
+  addBoxObstacle(x,z,w,d);
+  block(w,11,d,x,5.5,z,building);
+  block(w+.25,.34,d+.25,x,11.17,z,roofMat);
+  block(1.2,2.15,.14,x,1.075,z+d/2+.10,dark,scene,false);
+  dutchFacade({scene,x,z,w,d,h:11,floors:4,segments:3});
+  label('APARTAMENTOS',x,13.3,z,w*.85);
+}
 // Árvores periféricas.
 for(let z=-41;z<=41;z+=8){ tree(-27,z,.85); if(z>20||z< -22)tree(27,z,.85); }
 for(let x=-25;x<=25;x+=8)tree(x,-41,.9);
