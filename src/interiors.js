@@ -4,7 +4,7 @@ import { exteriorMaterial, interiorMaterial, metricBox } from './materials.js';
 
 // Modelação procedural dos interiores. Todas as dimensões em metros.
 export function createInteriors({scene,obstacles}){
-  const interactables=[],rooms=[];
+  const interactables=[],rooms=[],internalDoors=[];
   const mat=(color)=>new THREE.MeshStandardMaterial({color,roughness:.78});
   const oak=mat(0xb78a58),dark=mat(0x303b48),white=mat(0xece9df),black=mat(0x151b21),steel=mat(0x687785),blue=mat(0x276ba5),yellow=mat(0xe7ae28),cardboard=mat(0xb38a5d),fabric=mat(0x708881);
   const lit=new THREE.MeshBasicMaterial({color:0xe9f3ff});
@@ -152,6 +152,28 @@ export function createInteriors({scene,obstacles}){
     for(const X of [-1.045,1.045])box(.09,2.39,.43,X,1.355,.4,frame);
     box(2.18,.13,.43,0,2.55,.4,frame);
     box(2,.019,.42,0,.174,.4,frame);
+    // Porta articulada de acesso à sala de aula, com colisão dinâmica.
+    const hinge=new THREE.Group();hinge.position.set(-.98,.16,.4);group.add(hinge);
+    const leaf=box(1.94,2.29,.085,.97,1.145,0,frame,false,hinge);
+    const handle=box(.12,.10,.19,1.77,1.0,0,steel,false,hinge);
+    const plaque=box(1.38,.29,.025,.97,1.79,.055,white,false,hinge);
+    const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#e7edf2';ctx.fillRect(0,0,512,128);
+    ctx.fillStyle='#23384b';ctx.font='bold 54px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('SALA DE AULA',256,64,480);
+    const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
+    const nameMaterial=new THREE.MeshBasicMaterial({map:tex,toneMapped:false});
+    const doorSign=new THREE.Mesh(new THREE.PlaneGeometry(1.32,.25),nameMaterial);doorSign.position.set(.97,1.79,.071);hinge.add(doorSign);
+    let angle=0,opened=false;
+    const collider={type:'oriented',x:20,z:34.4,w:1.94,d:.085,angle:0};obstacles.push(collider);
+    const sync=a=>{hinge.rotation.y=a;Object.assign(collider,{x:20-.98+.97*Math.cos(a),z:34.4-.97*Math.sin(a),angle:a});};
+    sync(0);
+    interactables.push({meshes:[leaf,handle,plaque,doorSign],label:()=>opened?'Fechar sala de aula':'Abrir sala de aula',activate:()=>{opened=!opened;}});
+    internalDoors.push((dt,p)=>{
+      const goal=opened?Math.PI/2:0,a=angle+Math.sign(goal-angle)*Math.min(Math.abs(goal-angle),dt*2);
+      const dx=p.x-(20-.98+.97*Math.cos(a)),dz=p.z-(34.4-.97*Math.sin(a));
+      const lx=dx*Math.cos(a)-dz*Math.sin(a),lz=dx*Math.sin(a)+dz*Math.cos(a);
+      if(Math.hypot(Math.max(0,Math.abs(lx)-.97),Math.max(0,Math.abs(lz)-.043))>.36){angle=a;sync(a);}
+    });
     // Revestimentos próprios e teto mais baixo para distinguir os ambientes.
     for(const X of [-7.86,7.86]){
       box(.025,3.05,6.38,X,1.685,-2.87,classroomWall);
@@ -183,7 +205,7 @@ export function createInteriors({scene,obstacles}){
     box(4.6,1.42,.018,0,2.1,-6.21,white);
     table(0,-5.0,2.0,.75);computer(0,-5.0);
     // Identificação de ambas as divisões com texto grande.
-    for(const [name,Z,rotation] of [['BIBLIOTECA',.53,0],['SALA DE AULA',.27,Math.PI]]){
+    for(const [name,Z,rotation] of [['SALA DE AULA',.58,0],['BIBLIOTECA',.22,Math.PI]]){
       const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;
       const ctx=canvas.getContext('2d');ctx.fillStyle='#23384b';ctx.fillRect(0,0,1024,256);
       ctx.fillStyle='#fff';ctx.font='bold 115px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(name,512,128,970);
@@ -194,28 +216,41 @@ export function createInteriors({scene,obstacles}){
   }
   // Dachser: 70% do comprimento em X para armazém, 30% para escritório.
   {
-    const r=room({x:0,z:-33,w:24,d:13,h:8,wall:exteriorMaterial('concrete',0xe0e2e4),roof:exteriorMaterial('metal',0x57616b),floor:mat(0x8b9094),doorWidth:2.8});
+    const industrialFloor=interiorMaterial('epoxy',0x92989c,{roughness:.65});
+    const r=room({x:0,z:-56,w:38,d:26,h:10,wall:exteriorMaterial('concrete',0xe0e2e4),roof:exteriorMaterial('metal',0x57616b),floor:industrialFloor,doorWidth:2.8});
     const {box,partition,table,chair,computer,light}=r;
-    const split=4.8;
-    // Divisória com passagem de 1.8 m junto à entrada.
-    partition(.18,8.8,split,-1.9,3.1);partition(.18,1.0,split,5.85,3.1);
-    box(.18,.5,2.0,split,2.8,3.9,white);
-    for(const X of [-9,-3,2,8]){light(X,-3,0xe8f2ff);light(X,3,0xe8f2ff);}
-    // Racks longitudinais com paletes e caixas, corredores livres.
-    for(const X of [-9.1,-4.7,2.5]){
-      for(const Z of [-4.3,-1.5,1.3]){
-        const W=1.35,D=2.3;
-        obstacles.push({type:'box',x:X,z:-33+Z,w:W,d:D});
-        for(const a of [-1,1])for(const b of [-1,1])box(.09,3.6,.09,X+a*.63,1.96,Z+b*1.1,blue);
-        for(const Y of [.26,1.45,2.65]){
-          box(W,.11,D,X,Y,Z,yellow);
-          for(const P of [-.54,.54]){
-            for(let k=0;k<3;k++)box(1.05,.085,.19,X,Y+.105,Z+P+(k-1)*.28,oak);
-            box(.94,.65,.82,X,Y+.48,Z+P,cardboard);
-            box(.055,.65,.83,X,Y+.48,Z+P,white);
-          }
+    const split=7.6;
+    const stripe=mat(0xe5b632),officeFloor=interiorMaterial('terrazzo',0xf2f1e8);
+    // Escritório separado por parede completa e entrada junto à fachada sul.
+    partition(.22,21.5,split,-2.0,9.84);partition(.22,1.9,split,11.85,9.84);
+    box(.22,7.44,2.6,split,6.28,9.99,white);
+    box(11.05,.018,25.55,13.28,.172,0,officeFloor);
+    box(11.05,.10,25.55,13.28,3.55,0,white,false,r.top);
+    for(const X of [-14,-5,4,13])for(const Z of [-8,2,9])light(X,Z,0xe8f2ff);
+    // Racks com quatro níveis, corredores de 3–4 m e paletes em escala humana.
+    for(const X of [-15,-9,-3,3])for(const Z of [-9,-4,1]){
+      const W=2.2,D=3.8;
+      obstacles.push({type:'box',x:X,z:-56+Z,w:W,d:D});
+      for(const a of [-1,1])for(const b of [-1,1])box(.12,6.2,.12,X+a*1.04,3.26,Z+b*1.82,blue);
+      for(const Y of [.26,1.80,3.34,4.88]){
+        box(W,.13,D,X,Y,Z,yellow);
+        for(const P of [-1.2,0,1.2]){
+          for(let k=0;k<3;k++)box(1.75,.09,.26,X,Y+.11,Z+P+(k-1)*.34,oak);
+          box(1.65,.95,1.04,X,Y+.65,Z+P,cardboard);
+          box(.07,.95,1.05,X,Y+.65,Z+P,white);
         }
       }
+    }
+    // Marcações de segurança no chão e corredor pedonal junto ao escritório.
+    for(const X of [-17,-12,-6,0,6])box(.075,.012,21,X,.169,-1.0,stripe);
+    for(const Z of [-11.6,5.0,7.2])box(25.5,.012,.075,-5.3,.169,Z,stripe);
+    for(let k=0;k<10;k++)box(.48,.012,1.7,-9+k*1.65,.169,9.7,white);
+    // Portões de cais no interior, alinhados com as docas exteriores.
+    const dock=interiorMaterial('metal',0x9ca5ae);
+    for(const X of [-14,-7,0]){
+      box(3.2,4.0,.07,X,2.16,-12.84,dark);
+      box(2.85,3.65,.085,X,2.02,-12.79,dock);
+      for(let j=1;j<8;j++)box(2.84,.045,.02,X,.35+j*.44,-12.735,dark);
     }
     // Dois empilhadores estáticos, com garfos, rodas, mastro e cabine.
     function forklift(X,Z){
@@ -230,17 +265,17 @@ export function createInteriors({scene,obstacles}){
         box(.12,.08,.92,X+a*.30,.29,Z-1.28,steel);
       }
       box(1.04,.10,1.15,X,2.36,Z,dark);box(.82,.09,.09,X,.85,Z-.87,steel);
-      obstacles.push({type:'box',x:X,z:-33+Z-1.15,w:.85,d:1.0});
+      obstacles.push({type:'box',x:X,z:-56+Z-1.15,w:.85,d:1.0});
     }
-    forklift(-6.9,3.9);forklift(-1.9,-3.7);
+    forklift(-12,7.0);forklift(3,8.0);
     // Escritório: três postos, impressora e armário.
-    for(const Z of [-3.9,-1.2,1.5]){table(8.7,Z,2.0,.85);computer(8.7,Z-.05);chair(8.7,Z+.85);}
-    box(1.6,.85,.6,9.3,1.5- .91,5.4,white,true);box(.56,.38,.45,9.3,1.2,5.4,steel);
-    box(.65,2.1,1.7,11.35,1.21,-4.8,steel,true);
+    for(const Z of [-7,-2,3]){table(12.0,Z,2.0,.85);computer(12.0,Z-.05);chair(12.0,Z+.85);}
+    box(1.6,.85,.6,15.5,1.5- .91,8.4,white,true);box(.56,.38,.45,15.5,1.2,8.4,steel);
+    box(.65,2.1,1.7,17.9,1.21,-9.8,steel,true);
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;
     const ctx=canvas.getContext('2d');ctx.fillStyle='#13579b';ctx.fillRect(0,0,1024,256);ctx.fillStyle='#fff';ctx.font='bold 126px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DACHSER',512,128);
     const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
-    const sign=new THREE.Mesh(new THREE.PlaneGeometry(5,1.25),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));sign.position.set(-4,4.4,-6.36);r.group.add(sign);
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(5,1.25),new THREE.MeshBasicMaterial({map:tex,toneMapped:false}));sign.position.set(-6,7.1,-12.86);r.group.add(sign);
   }
-  return {interactables,update(dt,p,mode){for(const r of rooms)r.update(dt,p,mode);}};
+  return {interactables,update(dt,p,mode){for(const r of rooms)r.update(dt,p,mode);for(const update of internalDoors)update(dt,p);}};
 }

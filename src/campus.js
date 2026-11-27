@@ -36,8 +36,8 @@ sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -80;
 sun.shadow.camera.right = 80;
-sun.shadow.camera.top = 80;
-sun.shadow.camera.bottom = -80;
+sun.shadow.camera.top = 115;
+sun.shadow.camera.bottom = -115;
 sun.shadow.normalBias = .025;
 scene.add(sun);
 
@@ -109,15 +109,15 @@ function billboard(title,x,z) {
   sign.position.set(x,3.2,z);scene.add(sign);
 }
 // Terreno vertical, 64 m de largura por 96 m de comprimento.
-plane(64,96,0,0,ground,0);
+plane(64,146,0,-25,ground,0);
 plane(64,3.5,0,45,road,.06);
-plane(64,3.5,0,-45,road,.06);
-plane(3.8,92,-30,0,road,.06);
-plane(3.8,92,30,0,road,.06);
+plane(64,5.5,0,-94,road,.06);
+plane(5.5,139,-29,-24,road,.06);
+plane(5.5,139,29,-24,road,.06);
 // Marcações discretas no eixo das estradas periféricas.
 const roadPaint=mat('#d6d5ca');
-for(let x=-28;x<=28;x+=6)for(const z of [-45,45])plane(2.2,.09,x,z,roadPaint,.091);
-for(let z=-36;z<=36;z+=6)for(const x of [-30,30])plane(.09,2.2,x,z,roadPaint,.091);
+for(let x=-28;x<=28;x+=6)for(const z of [-94,45])plane(2.2,.09,x,z,roadPaint,.091);
+for(let z=-90;z<=36;z+=6)for(const x of [-29,29])plane(.09,2.2,x,z,roadPaint,.091);
 // Jardim e rede pedonal contínua. O pavimento fica acima da relva.
 // O jardim usa o mesmo terreno contínuo; sem placa sobreposta nem fronteira reta.
 const pathWidth=3;
@@ -129,7 +129,7 @@ function walk(x1,z1,x2,z2,width=pathWidth){
     (x1+x2)/2,(z1+z2)/2,pavement,.125);
 }
 // Eixo norte-sul: contorna a fonte pelo lado direito.
-walk(0,-26.5,0,8);
+walk(0,-43,0,8);
 walk(0,8,5,8);
 walk(5,8,5,24);
 walk(5,24,0,24);
@@ -179,7 +179,7 @@ for(const [x,z] of [[-6,8],[8,11],[-7,27],[7,27]]) {
 const interiors=createInteriors({scene,obstacles});
 label('CASA',-19,10.1,34,14);
 label('UAb',20,7.65,34,13.6);
-label('DACHSER',0,8.65,-33,20.4);
+label('DACHSER',0,10.65,-56,31);
 
 // Centro Tecnológico: paredes reais com abertura transitável, quatro quadros
 // interativos e teto separado, sem o antigo bloco maciço.
@@ -190,7 +190,40 @@ billboard('One more thing...',8,28);
 
 // UAb: inferior direita.
 
-// Dachser: topo, mais distante e opcional.
+// Dachser: pátio logístico e vias de acesso ligadas à estrada periférica.
+plane(55,23,0,-80.5,road,.065);
+for(const X of [-14,-7,0]){
+  plane(.10,18,X-1.85,-79,roadPaint,.11);
+  plane(.10,18,X+1.85,-79,roadPaint,.11);
+  plane(3.7,.12,X,-88,roadPaint,.11);
+  block(3.5,4.2,.18,X,2.1,-69.10,dark,scene,false);
+  block(3.08,3.65,.12,X,1.96,-69.22,roofMat,scene,false);
+  for(const s of [-1,1])block(.22,3.65,.38,X+s*1.67,1.95,-69.35,dark,scene,false);
+  block(3.5,.22,.52,X,3.98,-69.35,dark,scene,false);
+}
+const truckBlue=mat('#175b98'),truckWhite=mat('#e7e9e9'),truckTire=mat('#22262b'),truckGlass=mat('#526d82',{roughness:.35});
+function parkedTruck(x,z){
+  // Camião articulado de ~16 m, traseira junto ao cais.
+  const g=new THREE.Group();g.position.set(x,0,z);scene.add(g);
+  block(2.55,2.75,12.0,0,2.48,0,truckWhite,g);
+  block(2.4,.30,14.4,0,.92,-.65,dark,g);
+  block(2.48,2.60,3.2,0,2.0,-7.7,truckBlue,g);
+  block(2.12,.78,.08,0,2.72,-9.34,truckGlass,g);
+  for(const s of [-1,1]){
+    block(.055,.70,1.15,s*1.25,2.72,-7.7,truckGlass,g);
+    block(.09,.18,12.0,s*1.28,1.31,0,truckBlue,g);
+    for(const zz of [3.7,2.4,1.1,-5.4,-8.5]){
+      const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.50,.50,.29,12),truckTire);
+      wheel.rotation.z=Math.PI/2;wheel.position.set(s*1.18,.53,zz);g.add(wheel);
+    }
+    const cv=document.createElement('canvas');cv.width=512;cv.height=128;
+    const ctx=cv.getContext('2d');ctx.fillStyle='#e7e9e9';ctx.fillRect(0,0,512,128);ctx.fillStyle='#175b98';ctx.font='bold 90px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DACHSER',256,64,480);
+    const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(7.5,1.875),new THREE.MeshBasicMaterial({map:t}));sign.position.set(s*1.281,2.5,0);sign.rotation.y=s*Math.PI/2;g.add(sign);
+  }
+  addBoxObstacle(x,z-1.6,2.65,15.5);
+}
+parkedTruck(-14,-75.5);parkedTruck(0,-75.5);
 
 // Blocos residenciais à esquerda e ao topo direito.
 for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12]]){
@@ -203,7 +236,7 @@ for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12]]){
 }
 // Árvores periféricas.
 for(let z=-41;z<=41;z+=8){ tree(-27,z,.85); if(z>20||z< -22)tree(27,z,.85); }
-for(let x=-25;x<=25;x+=8)tree(x,-41,.9);
+// O antigo limite norte passa a ser o acesso pedonal à Dachser.
 
 // Vegetação baixa: distribuição determinística em manchas, sem colisões.
 const gardenWindTime={value:0};
@@ -239,7 +272,7 @@ gl_Position=projectionMatrix*mvPosition;
 function addGardenPlants(){
   let seed=84621;
   function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
-  const buildings=[[-19,34,19,12],[20,34,16,13],[0,-33,24,13],[20,-8,17,20],[-20,-11,12,21],[21,-34,14,12]];
+  const buildings=[[-19,34,19,12],[20,34,16,13],[0,-56,38,26],[20,-8,17,20],[-20,-11,12,21],[21,-34,14,12]];
   function clear(x,z){
     if(Math.abs(x)>27.5||Math.abs(z)>42)return false;
     if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.5&&Math.abs(z-Z)<D/2+.5))return false;
@@ -453,9 +486,9 @@ window.addEventListener('keydown',event=>{
 });
 
 const controls=new OrbitControls(camera,canvas);
-controls.target.set(0,0,0); controls.enableDamping=true;
+controls.target.set(0,0,-18); controls.enableDamping=true;
 controls.maxPolarAngle=Math.PI/2.03;
-controls.minDistance=18;controls.maxDistance=145;
+controls.minDistance=18;controls.maxDistance=185;
 controls.update();
 
 // Meta fora do edifício: as paredes ainda não têm aberturas físicas.

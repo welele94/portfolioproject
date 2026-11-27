@@ -6,7 +6,7 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
   const radius = 0.32;
   const WALK_SPEED = 3.8; // m/s virtuais
   const RUN_SPEED = 6.2;  // sprint: ~10 s até à porta dos Projetos
-  const BOUNDS = {minX:-28.8,maxX:28.8,minZ:-43.0,maxZ:43.0};
+  const BOUNDS = {minX:-28.8,maxX:28.8,minZ:-94.0,maxZ:43.0};
   const player = new THREE.Vector3(spawn.x,eyeHeight,spawn.z);
   let paused=false;
   let mode='aerial',yaw=-.75,pitch=0,clockStarted=false,elapsed=0,completed=false;
