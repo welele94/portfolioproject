@@ -211,14 +211,52 @@ billboard('One more thing...',5,25);
 // Dachser: pátio logístico e vias de acesso ligadas à estrada periférica.
 plane(55,23,0,-80.5,road,.065);
 for(const x of [-25.75,25.75])plane(.5,26,x,-56,road,.065);
-for(const X of [-21,-14,-7,0,7]){
+// Revestimento exterior azul em chapa perfilada, mantendo o betão interior.
+const dachserCladding=exteriorMaterial('metal',0x24559d);
+const dachserBase=exteriorMaterial('concrete',0x91b3c9);
+const dockRubber=mat('#20252a'),dockTrim=mat('#c5c8c8'),dockDoor=exteriorMaterial('metal',0xb7bdc3);
+const dockYellow=0xf5c52b;
+for(const side of [-1,1]){
+  block(.065,8.85,26,side*25.54,5.575,-56,dachserCladding,scene,false);
+  block(.075,1.15,26,side*25.55,.575,-56,dachserBase,scene,false);
+}
+block(51,8.85,.065,0,5.575,-69.04,dachserCladding,scene,false);
+block(51,1.15,.075,0,.575,-69.05,dachserBase,scene,false);
+for(const side of [-1,1]){
+  block(24.1,10,.065,side*13.45,5,-42.96,dachserCladding,scene,false);
+  block(24.1,1.15,.075,side*13.45,.575,-42.91,dachserBase,scene,false);
+}
+block(2.8,7.65,.065,0,6.175,-42.96,dachserCladding,scene,false);
+// Letras de fachada, em amarelo sobre a chapa azul.
+function industrialSign(text,x,y,z,w,h,back=false){
+  const cv=document.createElement('canvas');cv.width=1024;cv.height=256;
+  const ctx=cv.getContext('2d');ctx.clearRect(0,0,1024,256);
+  ctx.fillStyle='#f5c52b';ctx.font='bold 174px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,512,128,1000);
+  const texture=new THREE.CanvasTexture(cv);texture.colorSpace=THREE.SRGBColorSpace;
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,toneMapped:false}));
+  mesh.position.set(x,y,z);mesh.rotation.y=back?Math.PI:0;scene.add(mesh);
+}
+industrialSign('DACHSER',0,7.5,-42.88,16,3.0);
+// Cais numerados, com abrigos de borracha, molduras e plataforma de betão.
+for(const [idx,X] of [-21,-14,-7,0,7].entries()){
   plane(.10,18,X-1.85,-79,roadPaint,.11);
   plane(.10,18,X+1.85,-79,roadPaint,.11);
   plane(3.7,.12,X,-88,roadPaint,.11);
-  block(3.5,4.2,.18,X,2.1,-69.10,dark,scene,false);
-  block(3.08,3.65,.12,X,1.96,-69.22,roofMat,scene,false);
-  for(const s of [-1,1])block(.22,3.65,.38,X+s*1.67,1.95,-69.35,dark,scene,false);
-  block(3.5,.22,.52,X,3.98,-69.35,dark,scene,false);
+  block(3.6,4.0,.22,X,2.50,-69.20,dockTrim,scene,false);
+  block(3.42,3.82,.26,X,2.50,-69.34,dockRubber,scene,false);
+  block(2.65,3.22,.10,X,2.37,-69.50,dockDoor,scene,false);
+  for(const side of [-1,1])block(.36,3.7,.48,X+side*1.50,2.48,-69.54,dockRubber,scene,false);
+  block(3.36,.40,.48,X,4.23,-69.54,dockRubber,scene,false);
+  block(3.4,.78,.70,X,.39,-69.42,dachserBase,scene,false);
+  for(const side of [-1,1])block(.18,.22,.21,X+side*1.05,.86,-69.86,dockRubber,scene,false);
+  industrialSign(String(106-idx),X,5.42,-69.10,1.5,.65,true);
+}
+// Faixa de janelas do escritório, sem alterar as paredes ou colisões existentes.
+const officeGlass=mat('#536d85',{metalness:.18,roughness:.27});
+for(const X of [12,16,20,23.5]){
+  block(2.5,1.30,.10,X,2.35,-42.87,dockTrim,scene,false);
+  block(2.36,1.16,.045,X,2.35,-42.79,officeGlass,scene,false);
+  block(.055,1.16,.04,X,2.35,-42.75,dockTrim,scene,false);
 }
 const truckBlue=mat('#175b98'),truckWhite=mat('#e7e9e9'),truckTire=mat('#22262b'),truckGlass=mat('#526d82',{roughness:.35});
 function parkedTruck(x,z){
