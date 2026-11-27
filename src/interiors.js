@@ -217,18 +217,18 @@ export function createInteriors({scene,obstacles}){
   // Dachser: 70% do comprimento em X para armazém, 30% para escritório.
   {
     const industrialFloor=interiorMaterial('epoxy',0x92989c,{roughness:.65});
-    const r=room({x:0,z:-56,w:38,d:26,h:10,wall:exteriorMaterial('concrete',0xe0e2e4),roof:exteriorMaterial('metal',0x57616b),floor:industrialFloor,doorWidth:2.8});
+    const r=room({x:0,z:-56,w:51,d:26,h:10,wall:exteriorMaterial('concrete',0xe0e2e4),roof:exteriorMaterial('metal',0x57616b),floor:industrialFloor,doorWidth:2.8});
     const {box,partition,table,chair,computer,light}=r;
-    const split=7.6;
+    const split=10.2;
     const stripe=mat(0xe5b632),officeFloor=interiorMaterial('terrazzo',0xf2f1e8);
     // Escritório separado por parede completa e entrada junto à fachada sul.
-    partition(.22,21.5,split,-2.0,9.84);partition(.22,1.9,split,11.85,9.84);
+    partition(.22,21.69,split,-2.045,9.84);partition(.22,1.49,split,12.035,9.84);
     box(.22,7.44,2.6,split,6.28,9.99,white);
-    box(11.05,.018,25.55,13.28,.172,0,officeFloor);
-    box(11.05,.10,25.55,13.28,3.55,0,white,false,r.top);
-    for(const X of [-14,-5,4,13])for(const Z of [-8,2,9])light(X,Z,0xe8f2ff);
+    box(14.85,.018,25.55,17.73,.172,0,officeFloor);
+    box(14.85,.10,25.55,17.73,3.55,0,white,false,r.top);
+    for(const X of [-20,-11,-2,7,18])for(const Z of [-8,2,9])light(X,Z,0xe8f2ff);
     // Racks com quatro níveis, corredores de 3–4 m e paletes em escala humana.
-    for(const X of [-15,-9,-3,3])for(const Z of [-9,-4,1]){
+    for(const X of [-22,-16,-10,-4,2,7])for(const Z of [-9,-4,1]){
       const W=2.2,D=3.8;
       obstacles.push({type:'box',x:X,z:-56+Z,w:W,d:D});
       for(const a of [-1,1])for(const b of [-1,1])box(.12,6.2,.12,X+a*1.04,3.26,Z+b*1.82,blue);
@@ -242,12 +242,12 @@ export function createInteriors({scene,obstacles}){
       }
     }
     // Marcações de segurança no chão e corredor pedonal junto ao escritório.
-    for(const X of [-17,-12,-6,0,6])box(.075,.012,21,X,.169,-1.0,stripe);
-    for(const Z of [-11.6,5.0,7.2])box(25.5,.012,.075,-5.3,.169,Z,stripe);
+    for(const X of [-24,-19,-13,-7,-1,5,9])box(.075,.012,21,X,.169,-1.0,stripe);
+    for(const Z of [-11.6,5.0,7.2])box(35,.012,.075,-7.5,.169,Z,stripe);
     for(let k=0;k<10;k++)box(.48,.012,1.7,-9+k*1.65,.169,9.7,white);
     // Portões de cais no interior, alinhados com as docas exteriores.
     const dock=interiorMaterial('metal',0x9ca5ae);
-    for(const X of [-14,-7,0]){
+    for(const X of [-21,-14,-7,0,7]){
       box(3.2,4.0,.07,X,2.16,-12.84,dark);
       box(2.85,3.65,.085,X,2.02,-12.79,dock);
       for(let j=1;j<8;j++)box(2.84,.045,.02,X,.35+j*.44,-12.735,dark);
@@ -269,9 +269,9 @@ export function createInteriors({scene,obstacles}){
     }
     forklift(-12,7.0);forklift(3,8.0);
     // Escritório: três postos, impressora e armário.
-    for(const Z of [-7,-2,3]){table(12.0,Z,2.0,.85);computer(12.0,Z-.05);chair(12.0,Z+.85);}
-    box(1.6,.85,.6,15.5,1.5- .91,8.4,white,true);box(.56,.38,.45,15.5,1.2,8.4,steel);
-    box(.65,2.1,1.7,17.9,1.21,-9.8,steel,true);
+    for(const Z of [-7,-2,3]){table(15.0,Z,2.0,.85);computer(15.0,Z-.05);chair(15.0,Z+.85);}
+    box(1.6,.85,.6,20.5,1.5- .91,8.4,white,true);box(.56,.38,.45,20.5,1.2,8.4,steel);
+    box(.65,2.1,1.7,24.0,1.21,-9.8,steel,true);
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;
     const ctx=canvas.getContext('2d');ctx.fillStyle='#13579b';ctx.fillRect(0,0,1024,256);ctx.fillStyle='#fff';ctx.font='bold 126px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DACHSER',512,128);
     const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;

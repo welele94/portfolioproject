@@ -168,7 +168,9 @@ walkCurve([[3.5,11.8],[7.8,7.3],[13.2,5.2],[20,5],[20,2.4]],3.2);
 walkCurve([[4.2,18.4],[8.5,24],[9.2,32],[9.8,42]],2.2);
 // Apartamentos ocidentais e ligação pedonal norte.
 walkCurve([[-4.8,13],[-9,8],[-14,4],[-20,2],[-20,-.5]],2.4);
-walkCurve([[0,10],[0,-3],[-1,-14],[0,-26],[0,-43]],3.0);
+walk(0,10,0,-43,3.0);
+// Novos apartamentos em banda, orientados no eixo horizontal.
+walkCurve([[0,-25],[-7,-25],[-15,-25],[-15,-27]],2.3);
 // Apartamentos orientais: passagem a sul do edifício.
 walkCurve([[0,-23],[8,-23],[15,-24],[21,-25],[21,-28]],2.3);
 // Fonte: diâmetro 5 m; borda a 0.50 m, água pouco abaixo.
@@ -195,7 +197,7 @@ for(const [x,z] of [[-3.7,14],[3.7,16],[0,19.5],[-5,27]]) {
 const interiors=createInteriors({scene,obstacles});
 label('CASA',-19,10.1,34,14);
 label('UAb',20,7.65,34,13.6);
-label('DACHSER',0,10.65,-56,31);
+label('DACHSER',0,10.65,-56,42);
 
 // Centro Tecnológico: paredes reais com abertura transitável, quatro quadros
 // interativos e teto separado, sem o antigo bloco maciço.
@@ -208,7 +210,8 @@ billboard('One more thing...',5,25);
 
 // Dachser: pátio logístico e vias de acesso ligadas à estrada periférica.
 plane(55,23,0,-80.5,road,.065);
-for(const X of [-14,-7,0]){
+for(const x of [-25.75,25.75])plane(.5,26,x,-56,road,.065);
+for(const X of [-21,-14,-7,0,7]){
   plane(.10,18,X-1.85,-79,roadPaint,.11);
   plane(.10,18,X+1.85,-79,roadPaint,.11);
   plane(3.7,.12,X,-88,roadPaint,.11);
@@ -239,10 +242,10 @@ function parkedTruck(x,z){
   }
   addBoxObstacle(x,z-1.6,2.65,15.5);
 }
-parkedTruck(-14,-75.5);parkedTruck(0,-75.5);
+parkedTruck(-21,-75.5);parkedTruck(-7,-75.5);parkedTruck(7,-75.5);
 
 // Blocos residenciais à esquerda e ao topo direito.
-for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12]]){
+for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12],[-15,-33,20,12]]){
   addBoxObstacle(x,z,w,d);
   block(w,11,d,x,5.5,z,building);
   block(w+.25,.34,d+.25,x,11.17,z,roofMat);
@@ -251,7 +254,7 @@ for(const [x,z,w,d] of [[-20,-11,12,21],[21,-34,14,12]]){
   label('APARTAMENTOS',x,13.3,z,w*.85);
 }
 // Árvores periféricas.
-for(let z=-41;z<=41;z+=8){ tree(-27,z,.85); if(z>20||z< -22)tree(27,z,.85); }
+for(let z=-21;z<=41;z+=8){ tree(-25.5,z,.85); if(z>20)tree(25.5,z,.85); }
 // O antigo limite norte passa a ser o acesso pedonal à Dachser.
 
 // Vegetação baixa: distribuição determinística em manchas, sem colisões.
@@ -288,7 +291,7 @@ gl_Position=projectionMatrix*mvPosition;
 function addGardenPlants(){
   let seed=84621;
   function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
-  const buildings=[[-19,34,19,12],[20,34,16,13],[0,-56,38,26],[20,-8,17,20],[-20,-11,12,21],[21,-34,14,12]];
+  const buildings=[[-19,34,19,12],[20,34,16,13],[0,-56,51,26],[20,-8,17,20],[-20,-11,12,21],[21,-34,14,12],[-15,-33,20,12]];
   function clear(x,z){
     if(Math.abs(x)>25.9||Math.abs(z)>42)return false;
     if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.5&&Math.abs(z-Z)<D/2+.5))return false;
