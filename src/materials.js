@@ -22,7 +22,12 @@ const configs={
   metal:{scale:2,roughness:.72,bump:.009,color:[207,211,215]},
   bark:{scale:1,roughness:1,bump:.035,color:[202,176,145]},
   foliage:{scale:1,roughness:1,bump:.012,color:[179,207,155]},
-  wood:{scale:2,roughness:.83,bump:.007,color:[219,187,154]}
+  wood:{scale:2,roughness:.83,bump:.007,color:[219,187,154]},
+  epoxy:{scale:2.4,roughness:.32,bump:.0015,color:[196,199,204]},
+  acoustic:{scale:1.2,roughness:.94,bump:.004,color:[190,193,201]},
+  brushed:{scale:1,roughness:.43,bump:.001,color:[215,219,225]},
+  laminate:{scale:1.2,roughness:.55,bump:.002,color:[212,215,220]},
+  upholstery:{scale:.35,roughness:.95,bump:.0015,color:[200,200,200]}
 };
 function texturePair(kind){
   if(cache.has(kind))return cache.get(kind);
@@ -61,6 +66,24 @@ function texturePair(kind){
     }else if(kind==='metal'){
       const u=fract(x*8),ridge=Math.pow(Math.abs(Math.cos(u*Math.PI)),14);
       v=.96-.22*ridge+.06*fine+.07*macro;b=.38+.46*ridge;
+    }else if(kind==='epoxy'){
+      const fleck=hash(px,py,101);
+      v=.96+.08*macro+.06*mid+.06*fine;
+      if(fleck>.982)v+=.14;else if(fleck<.018)v-=.15;
+      b=.50+.12*fine;
+    }else if(kind==='acoustic'){
+      const row=Math.floor(y*48);
+      const u=fract(x*48+(row%2)*.5)-.5,w=fract(y*48)-.5;
+      const hole=1-Math.max(0,Math.min(1,(Math.hypot(u,w)-.14)/.09));
+      v=.96-.29*hole+.05*mid+.045*fine;b=.55-.35*hole+.04*fine;
+    }else if(kind==='brushed'){
+      const streak=hash(0,py,105)-.5;
+      v=.97+.13*streak+.04*macro+.025*fine;b=.50+.13*streak;
+    }else if(kind==='laminate'){
+      v=.97+.045*macro+.035*mid+.07*fine;b=.50+.13*fine;
+    }else if(kind==='upholstery'){
+      const weave=Math.sin(x*Math.PI*2*128)*Math.sin(y*Math.PI*2*128);
+      v=.96+.075*weave+.035*fine;b=.50+.25*weave;
     }else if(kind==='bark'||kind==='wood'){
       const stripe=Math.sin(2*Math.PI*(x*18+noise(x,y,4,91)*1.8));
       const groove=Math.pow((1+stripe)/2,4);
@@ -79,6 +102,12 @@ function texturePair(kind){
 }
 export function exteriorMaterial(kind,color=0xffffff){
   const cfg=configs[kind];return new THREE.MeshStandardMaterial({color,...texturePair(kind),roughness:cfg.roughness,bumpScale:cfg.bump,userData:{tileMeters:cfg.scale}});
+}
+// Materiais interiores reutilizam a mesma cache e escala UV.
+export function interiorMaterial(kind,color,options={}){
+  const material=exteriorMaterial(kind,color);
+  Object.assign(material,options);
+  return material;
 }
 // BoxGeometry tem seis faces e UV 0..1 por face. Reescala pelas dimensões reais.
 export function metricBox(w,h,d,material){

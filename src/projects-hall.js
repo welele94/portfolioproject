@@ -1,15 +1,15 @@
 import * as THREE from 'three';
-import { exteriorMaterial, metricBox } from './materials.js';
+import { exteriorMaterial, interiorMaterial, metricBox } from './materials.js';
 
 // Centro Tecnológico — primeira sala transitável, 1 unidade = 1 metro.
 // Os retângulos de colisão correspondem às paredes; a entrada não tem colisão.
 export function createProjectsHall({scene, obstacles}) {
   const cx=20, cz=-8, width=17, depth=20, height=9;
   const wallMaterial=exteriorMaterial('concrete',0xe1e6e9);
-  const floorMaterial=new THREE.MeshStandardMaterial({color:0x222831,roughness:.82});
+  const floorMaterial=interiorMaterial('epoxy',0x444b58,{roughness:.48});
   const roofMaterial=exteriorMaterial('metal',0x232934);
   const accent=new THREE.MeshStandardMaterial({color:0x36b8ec,emissive:0x124967,emissiveIntensity:.4});
-  const stationMaterial=new THREE.MeshStandardMaterial({color:0x183149,roughness:.6});
+  const stationMaterial=interiorMaterial('brushed',0x30465a,{metalness:.25});
   function solid(w,h,d,x,y,z,material,collision=false) {
     const mesh=new THREE.Mesh(metricBox(w,h,d,material),material);
     mesh.position.set(x,y,z);
@@ -61,7 +61,7 @@ export function createProjectsHall({scene, obstacles}) {
     const hinge=new THREE.Group();
     hinge.position.set(cx+side*1.4,.18,2);
     scene.add(hinge);
-    const mesh=new THREE.Mesh(new THREE.BoxGeometry(1.39,2.25,.10),stationMaterial);
+    const mesh=new THREE.Mesh(metricBox(1.39,2.25,.10,stationMaterial),stationMaterial);
     mesh.position.set(-side*.695,1.125,0);
     mesh.castShadow=true;mesh.receiveShadow=true;hinge.add(mesh);
     const handle=new THREE.Mesh(new THREE.BoxGeometry(.08,.22,.18),accent);
@@ -103,7 +103,7 @@ export function createProjectsHall({scene, obstacles}) {
     {title:'NextSeat',subtitle:'Projeto de aplicação',detail:'Projeto de desenvolvimento de uma aplicação. O código-fonte está disponível no GitHub.',url:'https://github.com/welele94/NextSeatProject',image:'./images/nextseat.png',x:28.22,z:-4,rotation:-Math.PI/2},
     {title:'Help!',subtitle:'Aplicação de apoio e motivação',detail:'Projeto académico de programação orientada a objetos, persistência e interface, com atenção aos princípios SOLID.',url:'https://github.com/welele94/help_app',x:28.22,z:-12,rotation:-Math.PI/2}
   ];
-  const frameMaterial=new THREE.MeshStandardMaterial({color:0x263440,roughness:.8});
+  const frameMaterial=interiorMaterial('brushed',0x3c4650,{metalness:.25});
   const loader=new THREE.TextureLoader();
   function artwork(p){
     const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1536;
@@ -133,7 +133,7 @@ export function createProjectsHall({scene, obstacles}) {
     const frame=new THREE.Group();
     frame.position.set(p.x,1.85,p.z);frame.rotation.y=p.rotation;
     scene.add(frame);
-    const backing=new THREE.Mesh(new THREE.BoxGeometry(3.35,2.55,.10),frameMaterial);
+    const backing=new THREE.Mesh(metricBox(3.35,2.55,.10,frameMaterial),frameMaterial);
     frame.add(backing);
     const board=new THREE.Mesh(new THREE.PlaneGeometry(3.20,2.40),
       new THREE.MeshBasicMaterial({map:artwork(p),toneMapped:false}));
@@ -141,10 +141,10 @@ export function createProjectsHall({scene, obstacles}) {
     interactables.push({meshes:[board,backing],label:()=> 'Explorar '+p.title,activate:()=>p});
   }
   // Interior tech: revestimento independente para preservar a fachada.
-  const charcoal=new THREE.MeshStandardMaterial({color:0x11151e,roughness:.9});
-  const graphite=new THREE.MeshStandardMaterial({color:0x272e39,roughness:.75});
-  const metal=new THREE.MeshStandardMaterial({color:0x0d1118,metalness:.35,roughness:.45});
-  const rubber=new THREE.MeshStandardMaterial({color:0x080b10,roughness:1});
+  const charcoal=interiorMaterial('acoustic',0x303641);
+  const graphite=interiorMaterial('laminate',0x414955);
+  const metal=interiorMaterial('brushed',0x29313b,{metalness:.25});
+  const rubber=interiorMaterial('upholstery',0x22262d);
   const neon=(color)=>new THREE.MeshBasicMaterial({color,toneMapped:false});
   const cyan=neon(0x19dcff),purple=neon(0xa45bff),pink=neon(0xff459d);
   solid(.045,8.9,19.5,11.75,4.5,-8,charcoal);
@@ -231,13 +231,18 @@ export function createProjectsHall({scene, obstacles}) {
   // Teto escuro com vigas e luminárias; ocultável em vista aérea.
   const ceilingDetails=new THREE.Group();scene.add(ceilingDetails);
   function ceilingPiece(w,h,d,x,y,z,material){
-    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+    const mesh=new THREE.Mesh(metricBox(w,h,d,material),material);
     mesh.position.set(x,y,z);ceilingDetails.add(mesh);return mesh;
   }
   for(const z of [-15,-10,-5,0]){
     ceilingPiece(16.4,.24,.32,20,8.85,z,metal);
     ceilingPiece(14.8,.045,.07,20,8.70,z,z===-10||z===0?purple:cyan);
   }
+  // Revestimento do teto por baixo da cobertura, mantém o exterior intacto.
+  const ceilingFinish=interiorMaterial('acoustic',0x20252d);
+  ceilingPiece(16.40,.065,19.35,20,8.96,-8,ceilingFinish);
+  // Juntas entre painéis do revestimento, acima dos quadros e da circulação.
+  for(const z of [-14,-10,-6,-2])ceilingPiece(16.30,.025,.025,20,8.915,z,metal);
   // Ilha central expositiva: bancada, base recuada e iluminação inferior.
   solid(4.7,.13,2.25,20,1.12,-6.8,graphite,true);
   solid(4.15,.84,1.72,20,.61,-6.8,charcoal);
