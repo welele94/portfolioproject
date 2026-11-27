@@ -303,29 +303,88 @@ function addGardenPlants(){
     }
     grassCells.push({x:(tx+xEnd)/2,z:(tz+zEnd)/2,levels,current:-1});
   }
-  // Pequenos grupos de flores silvestres, margaridas e flores lilases.
-  const flowers=[];
-  const centers=[[-5,12],[-4,20],[9,16],[12,21],[-13,8],[-6,28],[7,30],[11,8],[-5,4],[12,1],[-13,19],[3,-13],[-5,-18]];
-  for(const [cx,cz] of centers)for(let k=0;k<65;k++){
-    const a=rand()*Math.PI*2,r=Math.sqrt(rand())*1.65,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r;
-    if(clear(x,z))flowers.push({x,z,h:.95+rand()*.38,size:1.35+rand()*.65,kind:Math.floor(rand()*5),a:rand()*Math.PI*2});
+  // Flores baixas nas margens da relva alta, sem invadir o pavimento.
+  function flowerClear(x,z){
+    if(Math.abs(x)>27.5||Math.abs(z)>42)return false;
+    if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.24&&Math.abs(z-Z)<D/2+.24))return false;
+    if(pedestrianAreas.some(p=>Math.abs(x-p.x)<p.w/2+.16&&Math.abs(z-p.z)<p.d/2+.16))return false;
+    return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.20:Math.abs(x-o.x)<o.w/2+.20&&Math.abs(z-o.z)<o.d/2+.20);
   }
-  const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.006,.009,1,5,4),windMaterial(new THREE.MeshStandardMaterial({color:0x527b36,roughness:1})),flowers.length);
-  const petals=new THREE.InstancedMesh(new THREE.SphereGeometry(1,7,5),windMaterial(new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85})),flowers.length*5);
-  const hearts=new THREE.InstancedMesh(new THREE.SphereGeometry(1,8,5),windMaterial(new THREE.MeshStandardMaterial({color:0xf3be38,roughness:.8})),flowers.length);
-  const palette=[0xfff4dd,0xfff7ef,0xf4c448,0xb18ce3,0xe9a4c5];
+  const flowers=[];
+  const palette=[0xfff4dd,0xfff7ef,0xf4c448,0xb18ce3,0xe9a4c5,0xaac6ff];
+  // Procurar faixas de terra vazias entre o caminho e a vegetação.
+  for(const p of pedestrianAreas){
+    const horizontal=p.w>=p.d,len=horizontal?p.w:p.d;
+    for(const side of [-1,1])for(let t=-len/2+.35;t<len/2-.35;t+=.85){
+      if(rand()>.50)continue;
+      const offset=.24+rand()*.16;
+      const cx=horizontal?p.x+t:p.x+side*(p.w/2+offset);
+      const cz=horizontal?p.z+side*(p.d/2+offset):p.z+t;
+      if(!flowerClear(cx,cz)||clear(cx,cz))continue;
+      const kind=Math.floor(rand()*palette.length);
+      for(let k=0;k<4;k++){
+        const x=cx+(rand()-.5)*.30,z=cz+(rand()-.5)*.30;
+        if(flowerClear(x,z)&&!clear(x,z))flowers.push({x,z,h:.24+rand()*.22,size:.95+rand()*.65,kind,a:rand()*Math.PI*2});
+      }
+    }
+  }
+  // Manter as flores altas acima do prado em manchas naturais.
+  const centers=[[-5,12],[-4,20],[9,16],[12,21],[-13,8],[-6,28],[7,30],[11,8],[-5,4],[12,1],[-13,19],[3,-13],[-5,-18]];
+  for(const [cx,cz] of centers)for(let k=0;k<40;k++){
+    const a=rand()*Math.PI*2,r=Math.sqrt(rand())*1.65,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r;
+    if(clear(x,z))flowers.push({x,z,h:.95+rand()*.38,size:1.35+rand()*.65,kind:Math.floor(rand()*palette.length),a:rand()*Math.PI*2});
+  }
+  // Cada flor usa um único disco de pétalas de baixo custo, em vez de várias esferas.
+  function blossomGeometry(count,inner,outer,wide){
+    const pos=[];
+    for(let k=0;k<count;k++){
+      const a=k*Math.PI*2/count,dx=Math.cos(a),dz=Math.sin(a);
+      const root=[dx*inner,0,dz*inner],tip=[dx*outer,0,dz*outer];
+      const left=[dx*(inner+outer)/2-dz*wide,.009,dz*(inner+outer)/2+dx*wide];
+      const right=[dx*(inner+outer)/2+dz*wide,.009,dz*(inner+outer)/2-dx*wide];
+      pos.push(...root,...left,...tip,...root,...tip,...right);
+    }
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;
+  }
+  const stemMat=windMaterial(new THREE.MeshLambertMaterial({color:0x527b36}));
+  const flowerMat=windMaterial(new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide}));
+  const heartMat=windMaterial(new THREE.MeshLambertMaterial({color:0xf3be38}));
+  const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.005,.0075,1,5,3),stemMat,flowers.length);
+  const petals=new THREE.InstancedMesh(blossomGeometry(6,.012,.057,.018),flowerMat,flowers.length);
+  const hearts=new THREE.InstancedMesh(new THREE.SphereGeometry(1,6,4),heartMat,flowers.length);
+  function finish(mesh){mesh.userData.decoration=true;mesh.castShadow=false;mesh.receiveShadow=false;mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();mesh.boundingSphere.radius+=1;scene.add(mesh);}
   flowers.forEach((f,i)=>{
     dummy.rotation.set(0,0,0);dummy.position.set(f.x,.025+f.h/2,f.z);dummy.scale.set(1,f.h,1);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);
-    const y=.025+f.h;
-    dummy.position.set(f.x,y+.008,f.z);dummy.scale.set(.018*f.size,.012*f.size,.018*f.size);dummy.updateMatrix();hearts.setMatrixAt(i,dummy.matrix);
-    for(let k=0;k<5;k++){
-      const a=f.a+k*Math.PI*2/5;
-      dummy.position.set(f.x+Math.cos(a)*.027*f.size,y,f.z+Math.sin(a)*.027*f.size);
-      dummy.rotation.set(0,-a,0);dummy.scale.set(.027*f.size,.008*f.size,.014*f.size);dummy.updateMatrix();
-      petals.setMatrixAt(i*5+k,dummy.matrix);petals.setColorAt(i*5+k,color.setHex(palette[f.kind]));
-    }
+    dummy.position.set(f.x,.025+f.h+.008,f.z);dummy.scale.set(.018*f.size,.012*f.size,.018*f.size);dummy.updateMatrix();hearts.setMatrixAt(i,dummy.matrix);
+    dummy.position.set(f.x,.025+f.h,f.z);dummy.rotation.set(0,f.a,0);dummy.scale.setScalar(f.size);dummy.updateMatrix();petals.setMatrixAt(i,dummy.matrix);petals.setColorAt(i,color.setHex(palette[f.kind]));
   });
-  for(const mesh of [stems,petals,hearts]){mesh.userData.decoration=true;mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere();mesh.boundingSphere.radius+=.7;scene.add(mesh);}
+  for(const mesh of [stems,petals,hearts])finish(mesh);
+  // Três pequenos núcleos de girassóis em terra livre, com cabeças verticais.
+  const sunflowers=[];
+  for(const [cx,cz] of [[-18,18],[12,17],[-5,-12]]){
+    const wanted=5+Math.floor(rand()*3);let placed=0;
+    for(let attempt=0;attempt<80&&placed<wanted;attempt++){
+      const a=rand()*Math.PI*2,r=.35+rand()*1.25,x=cx+Math.cos(a)*r,z=cz+Math.sin(a)*r;
+      if(!clear(x,z)||sunflowers.some(f=>Math.hypot(x-f.x,z-f.z)<.38))continue;
+      sunflowers.push({x,z,h:1.30+rand()*.38,size:.9+rand()*.35,rot:(rand()-.5)*1.25});placed++;
+    }
+  }
+  const n=sunflowers.length;
+  if(n){
+    const sunflowerStems=new THREE.InstancedMesh(new THREE.CylinderGeometry(.012,.017,1,6,4),stemMat,n);
+    const sunflowerPetals=new THREE.InstancedMesh(blossomGeometry(14,.078,.19,.037),windMaterial(new THREE.MeshLambertMaterial({color:0xf5c52a,side:THREE.DoubleSide})),n);
+    const sunflowerCenters=new THREE.InstancedMesh(new THREE.CylinderGeometry(.082,.082,.035,16),windMaterial(new THREE.MeshLambertMaterial({color:0x624023})),n);
+    const leafGeo=new THREE.BufferGeometry();leafGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,.14,.07,.07,.32,.14,0,0,0,0,.32,.14,0,.14,.07,-.07],3));leafGeo.computeVertexNormals();
+    const sunflowerLeaves=new THREE.InstancedMesh(leafGeo,windMaterial(new THREE.MeshLambertMaterial({color:0x58893d,side:THREE.DoubleSide})),n*2);
+    sunflowers.forEach((f,i)=>{
+      dummy.position.set(f.x,.025+f.h/2,f.z);dummy.rotation.set(0,0,0);dummy.scale.set(1,f.h,1);dummy.updateMatrix();sunflowerStems.setMatrixAt(i,dummy.matrix);
+      dummy.position.set(f.x,.025+f.h,f.z);dummy.rotation.set(Math.PI/2,f.rot,0,'YXZ');dummy.scale.setScalar(f.size);dummy.updateMatrix();sunflowerPetals.setMatrixAt(i,dummy.matrix);sunflowerCenters.setMatrixAt(i,dummy.matrix);
+      for(let k=0;k<2;k++){
+        dummy.position.set(f.x,.025+f.h*(.38+k*.23),f.z);dummy.rotation.set(0,f.rot+k*Math.PI,0,'YXZ');dummy.scale.setScalar(f.size);dummy.updateMatrix();sunflowerLeaves.setMatrixAt(i*2+k,dummy.matrix);
+      }
+    });
+    for(const mesh of [sunflowerStems,sunflowerPetals,sunflowerCenters,sunflowerLeaves])finish(mesh);
+  }
 }
 addGardenPlants();
 function updateGrassLOD(camera,mode){
