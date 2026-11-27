@@ -118,43 +118,59 @@ plane(5.5,139,29,-24,road,.06);
 const roadPaint=mat('#d6d5ca');
 for(let x=-28;x<=28;x+=6)for(const z of [-94,45])plane(2.2,.09,x,z,roadPaint,.091);
 for(let z=-90;z<=36;z+=6)for(const x of [-29,29])plane(.09,2.2,x,z,roadPaint,.091);
-// Jardim e rede pedonal contínua. O pavimento fica acima da relva.
-// O jardim usa o mesmo terreno contínuo; sem placa sobreposta nem fronteira reta.
-const pathWidth=3;
+// Rede pedonal orgânica: curvas suaves, praça central e acessos por destino.
 const pedestrianAreas=[];
-function walk(x1,z1,x2,z2,width=pathWidth){
-  if(x1!==x2&&z1!==z2)throw new Error('Segmento pedonal deve ser axial');
-  pedestrianAreas.push({x:(x1+x2)/2,z:(z1+z2)/2,w:Math.abs(x2-x1)+width,d:Math.abs(z2-z1)+width});
-  plane(Math.abs(x2-x1)+width,Math.abs(z2-z1)+width,
-    (x1+x2)/2,(z1+z2)/2,pavement,.125);
+function pathDistance(x,z,p){
+  if(p.type==='circle')return Math.hypot(x-p.x,z-p.z)-p.r;
+  const dx=p.bx-p.ax,dz=p.bz-p.az,l=dx*dx+dz*dz;
+  const t=l?Math.max(0,Math.min(1,((x-p.ax)*dx+(z-p.az)*dz)/l)):0;
+  return Math.hypot(x-p.ax-t*dx,z-p.az-t*dz)-p.r;
 }
-// Eixo norte-sul: contorna a fonte pelo lado direito.
-walk(0,-43,0,8);
-walk(0,8,5,8);
-walk(5,8,5,24);
-walk(5,24,0,24);
-walk(0,24,0,42);
-// Ligações transversais do jardim, evitando os edifícios.
-walk(-12,-5,10,-5);
-walk(-23,24,20,24);
-walk(-10,-5,-10,24);
-walk(16,5,16,24);
-walk(0,5,20,5);
-walk(20,5,20,2);
-// Acessos às fachadas dos apartamentos e UAb.
-walk(-20,-.5,-20,3);
-walk(-20,3,-10,3);
-walk(21,-28,21,-23);
-walk(0,-23,21,-23);
-
-// Passeio sul, em frente à Casa e UAb.
-walk(-25.4,42,20,42);
-walk(-25.4,40,-25.4,42);
-walk(-19,40,-19,42);
-walk(-12.6,40,-12.6,42);
-walk(20,40.5,20,42);
-// Ligação sul-norte pelo corredor entre Casa e jardim.
-walk(-9,24,-9,42);
+function pavedCircle(x,z,r){
+  pedestrianAreas.push({type:'circle',x,z,r});
+  const g=new THREE.CircleGeometry(r,64);
+  const uv=g.attributes.uv;
+  for(let j=0;j<uv.count;j++)uv.setXY(j,(g.attributes.position.getX(j)+x)/2,(z-g.attributes.position.getY(j))/2);
+  const mesh=new THREE.Mesh(g,pavement);mesh.rotation.x=-Math.PI/2;mesh.position.set(x,.150,z);mesh.receiveShadow=true;scene.add(mesh);
+}
+function walkCurve(points,width=3){
+  const curve=new THREE.CatmullRomCurve3(points.map(([x,z])=>new THREE.Vector3(x,0,z)),false,'centripetal');
+  const samples=curve.getPoints(Math.max(8,Math.ceil(curve.getLength()/0.65)));
+  const positions=[],uv=[],indices=[];
+  for(let j=0;j<samples.length;j++){
+    const p=samples[j],prev=samples[Math.max(0,j-1)],next=samples[Math.min(samples.length-1,j+1)];
+    const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.hypot(dx,dz)||1;
+    for(const side of [-1,1]){
+      const x=p.x+side*(-dz/len)*width/2,z=p.z+side*(dx/len)*width/2;
+      positions.push(x,.149,z);uv.push(x/2,z/2);
+    }
+    if(j){
+      const k=2*j;indices.push(k-2,k-1,k,k-1,k+1,k);
+      pedestrianAreas.push({type:'segment',ax:prev.x,az:prev.z,bx:p.x,bz:p.z,r:width/2});
+    }
+  }
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();
+  // Corrigir orientação das faces para cima.
+  if(geo.attributes.normal.getY(0)<0){for(let j=0;j<indices.length;j+=3)[indices[j+1],indices[j+2]]=[indices[j+2],indices[j+1]];geo.setIndex(indices);geo.computeVertexNormals();}
+  const mesh=new THREE.Mesh(geo,pavement);mesh.receiveShadow=true;scene.add(mesh);
+  for(const p of [samples[0],samples[samples.length-1]])pavedCircle(p.x,p.z,width/2);
+}
+function walk(x1,z1,x2,z2,width=3){walkCurve([[x1,z1],[x2,z2]],width);}
+// Passeio sul contínuo e acessos às entradas reais.
+walk(-25.4,42,20,42,3);
+for(const x of [-25.4,-19,-12.6])walk(x,40,x,42,2.4);
+walk(20,40.5,20,42,2.4);
+// Eixo principal: saída da Casa, praça e porta dos Projetos.
+walkCurve([[-9,42],[-9,31],[-6,23],[-3.4,18.3]],3.2);
+pavedCircle(0,15,5.6);
+walkCurve([[3.5,11.8],[7.8,7.3],[13.2,5.2],[20,5],[20,2.4]],3.2);
+// Acesso à UAb pelo corredor livre entre os edifícios.
+walkCurve([[4.2,18.4],[8.5,24],[9.2,32],[9.8,42]],2.2);
+// Apartamentos ocidentais e ligação pedonal norte.
+walkCurve([[-4.8,13],[-9,8],[-14,4],[-20,2],[-20,-.5]],2.4);
+walkCurve([[0,10],[0,-3],[-1,-14],[0,-26],[0,-43]],3.0);
+// Apartamentos orientais: passagem a sul do edifício.
+walkCurve([[0,-23],[8,-23],[15,-24],[21,-25],[21,-28]],2.3);
 // Fonte: diâmetro 5 m; borda a 0.50 m, água pouco abaixo.
 addCircleObstacle(0,15,2.55);
 const fountainBase=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.55,HUMAN.fountainRimHeight,32),white);
@@ -163,10 +179,10 @@ const fountainWater=new THREE.Mesh(new THREE.CylinderGeometry(2.12,2.12,.05,32),
 fountainWater.position.set(0,HUMAN.fountainRimHeight-.07,15);scene.add(fountainWater);
 const fountainJet=new THREE.Mesh(new THREE.CylinderGeometry(.08,.15,1.10,12),water);
 fountainJet.position.set(0,HUMAN.fountainRimHeight+.49,15);scene.add(fountainJet);
-for(const [x,z] of [[-13,7],[-7,19],[11,9],[10,20],[-6,28],[7,30]]) tree(x,z,.85);
+for(const [x,z] of [[-13,10],[-8,18],[12,11],[15,19],[-5,30],[5,30]]) tree(x,z,.85);
 // Bancos: assento a 45 cm (antes ~81 cm), 1.60 x 0.43 m.
 const benchWood=exteriorMaterial('wood','#a1805d');
-for(const [x,z] of [[-6,8],[8,11],[-7,27],[7,27]]) {
+for(const [x,z] of [[-3.7,14],[3.7,16],[0,19.5],[-5,27]]) {
   addBoxObstacle(x,z,HUMAN.benchLength,HUMAN.seatDepth);
   const seatThickness=.10;
   block(HUMAN.benchLength,seatThickness,HUMAN.seatDepth,x,HUMAN.seatHeight-seatThickness/2,z,benchWood);
@@ -185,8 +201,8 @@ label('DACHSER',0,10.65,-56,31);
 // interativos e teto separado, sem o antigo bloco maciço.
 const projectsHall=createProjectsHall({scene,obstacles});
 billboard('Galeria de Projetos',8,-5);
-billboard('Centro Tecnológico',8,6);
-billboard('One more thing...',8,28);
+billboard('Centro Tecnológico',10,3);
+billboard('One more thing...',5,25);
 
 // UAb: inferior direita.
 
@@ -274,9 +290,9 @@ function addGardenPlants(){
   function rand(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;}
   const buildings=[[-19,34,19,12],[20,34,16,13],[0,-56,38,26],[20,-8,17,20],[-20,-11,12,21],[21,-34,14,12]];
   function clear(x,z){
-    if(Math.abs(x)>27.5||Math.abs(z)>42)return false;
+    if(Math.abs(x)>25.9||Math.abs(z)>42)return false;
     if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.5&&Math.abs(z-Z)<D/2+.5))return false;
-    if(pedestrianAreas.some(p=>Math.abs(x-p.x)<p.w/2+.65&&Math.abs(z-p.z)<p.d/2+.65))return false;
+    if(pedestrianAreas.some(p=>pathDistance(x,z,p)<.65))return false;
     return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.32:Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3);
   }
   const dummy=new THREE.Object3D(),color=new THREE.Color();
@@ -345,9 +361,9 @@ function addGardenPlants(){
   }
   // Flores baixas nas margens da relva alta, sem invadir o pavimento.
   function flowerClear(x,z){
-    if(Math.abs(x)>27.5||Math.abs(z)>42)return false;
+    if(Math.abs(x)>25.9||Math.abs(z)>42)return false;
     if(buildings.some(([X,Z,W,D])=>Math.abs(x-X)<W/2+.24&&Math.abs(z-Z)<D/2+.24))return false;
-    if(pedestrianAreas.some(p=>Math.abs(x-p.x)<p.w/2+.16&&Math.abs(z-p.z)<p.d/2+.16))return false;
+    if(pedestrianAreas.some(p=>pathDistance(x,z,p)<.16))return false;
     return !obstacles.some(o=>o.type==='circle'?Math.hypot(x-o.x,z-o.z)<o.r+.20:Math.abs(x-o.x)<o.w/2+.20&&Math.abs(z-o.z)<o.d/2+.20);
   }
   const flowers=[];
@@ -360,15 +376,22 @@ function addGardenPlants(){
     if(occupied.has(key)||flowers.length>=6500)return;
     occupied.add(key);flowers.push({x,z,h,size,kind,a:rand()*Math.PI*2});
   }
+  // Amostrar as margens das curvas e da praça, em vez de retângulos.
   for(const p of pedestrianAreas){
-    const horizontal=p.w>=p.d,len=horizontal?p.w:p.d;
-    for(const side of [-1,1])for(let t=-len/2+.18;t<len/2-.18;t+=.28){
-      if(rand()>.92)continue;
-      const kind=Math.floor(rand()*palette.length);
-      for(let k=0;k<8;k++){
-        const along=t+(rand()-.5)*.32,offset=.20+rand()*.45;
-        const x=horizontal?p.x+along:p.x+side*(p.w/2+offset);
-        const z=horizontal?p.z+side*(p.d/2+offset):p.z+along;
+    const len=p.type==='circle'?2*Math.PI*p.r:Math.hypot(p.bx-p.ax,p.bz-p.az);
+    const count=Math.max(1,Math.ceil(len/.28));
+    for(let j=0;j<count;j++){
+      const t=(j+rand())/count,kind=Math.floor(rand()*palette.length);
+      for(const side of p.type==='circle'?[1]:[-1,1])for(let k=0;k<6;k++){
+        const offset=p.r+.20+rand()*.45;
+        let x,z;
+        if(p.type==='circle'){
+          const a=t*Math.PI*2+(rand()-.5)*.045;x=p.x+Math.cos(a)*offset;z=p.z+Math.sin(a)*offset;
+        }else{
+          const dx=p.bx-p.ax,dz=p.bz-p.az;
+          x=p.ax+dx*t-side*dz/len*offset+(rand()-.5)*.12;
+          z=p.az+dz*t+side*dx/len*offset+(rand()-.5)*.12;
+        }
         if(flowerClear(x,z)&&!clear(x,z))addFlower(x,z,.24+rand()*.26,1.15+rand()*.85,kind);
       }
     }
@@ -568,7 +591,7 @@ renderer.setAnimationLoop(()=>{
     prompt.hidden=!action;
     if(action)prompt.textContent='E — '+action.label();
   }
-  if(navigation.getMode()==='aerial')controls.update();
+  if(navigation.getMode()==='aerial'){controls.update();scene.fog.near=200;scene.fog.far=300;}else{scene.fog.near=105;scene.fog.far=175;}
   destinationMarker.material.opacity=.68+.24*Math.sin(clock.elapsedTime*3);
   destinationMarker.material.transparent=true;
   updateGrassLOD(camera,navigation.getMode());
