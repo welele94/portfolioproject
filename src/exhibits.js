@@ -19,25 +19,67 @@ export function buildExhibits({scene,obstacles,projects,interactables,aircraft})
  function attach(target,project,label,terminal=false){interactables.push({meshes:[target],label:()=>label,activate:()=>terminal?{...project,terminal:true}:project});}
  // NextSeat, east/south quadrant. Small individual plinths, no raised floor.
  const nx=24.35,nz=-3.9,R=2.65;ring(nx,nz,3.35,blue);
- const names=['Avião','Globo e rota','Calm Mode','Modo offline','Progresso','Fases do voo'];
+ // Physical objects immediately associated with a passenger's journey.
+ const names=['Avião','Globo terrestre','Banco de avião','Janela de cabine','Bagagem','NextSeat App'];
  const points=names.map((_,j)=>[nx+R*Math.sin(j*Math.PI/3),nz-R*Math.cos(j*Math.PI/3)]);
- for(let j=0;j<6;j++){const [x,z]=points[j];pedestal(x,z,blue);screen(names[j],'NEXTSEAT',x, .99,z+.48,.84,.38);}
- aircraft.position.set(points[0][0],1.22,points[0][1]);aircraft.scale.setScalar(.66);
- const [gx,gz]=points[1], globe=group(gx,1.30,gz);ball(.43,0,0,0,mat(0x276ba4),globe);
- const wire=mesh(new THREE.SphereGeometry(.437,16,10),new THREE.MeshBasicMaterial({color:0x9bdcff,wireframe:true,transparent:true,opacity:.35}),0,0,0,globe);
- const orbit=mesh(new THREE.TorusGeometry(.48,.015,6,40),blue,0,0,0,globe);orbit.rotation.x=.8;
- const marker=ball(.055,0,0,0,glow(0xffffff),globe);
- const [bx,bz]=points[2],breath=ball(.34,bx,1.27,bz,blue);
- const [px,pz]=points[3];box(.47,.78,.08,px,1.16,pz,dark);screen('OFFLINE','Ready to fly',px,1.16,pz+.045,.41,.69);
- const [qx,qz]=points[4];box(.83,.38,.09,qx,1.21,qz,dark);const bar=box(.73,.09,.04,qx,1.16,qz+.06,blue);screen('LIS → OPO','Journey',qx,1.48,qz+.06,.84,.35);
- const [fx,fz]=points[5],cloud=group(fx,1.24,fz);for(let j=0;j<4;j++)ball(.19,j*.16-.24,Math.sin(j)*.07,0,mat(0xe4f1ff),cloud);screen('Cruise','Next: arrival',fx,1.70,fz,.84,.40);
+ for(let j=0;j<6;j++){const [x,z]=points[j];pedestal(x,z,blue);}
+ aircraft.position.set(points[0][0],1.27,points[0][1]);aircraft.scale.setScalar(.85);
+ const [gx,gz]=points[1],globe=group(gx,1.30,gz);
+ const earthCanvas=document.createElement('canvas');earthCanvas.width=1024;earthCanvas.height=512;const ec=earthCanvas.getContext('2d');ec.fillStyle='#2163a0';ec.fillRect(0,0,1024,512);
+ // Simplified continent silhouettes, decorative rather than navigation data.
+ ec.fillStyle='#73ab70';
+ for(const poly of [[[.08,.22],[.17,.13],[.28,.17],[.31,.28],[.23,.37],[.22,.47],[.16,.41],[.12,.31]],[[.24,.47],[.33,.49],[.36,.62],[.30,.82],[.26,.72]],[[.43,.22],[.50,.17],[.60,.18],[.66,.25],[.78,.17],[.91,.25],[.88,.41],[.78,.45],[.72,.38],[.65,.50],[.59,.37],[.53,.39],[.49,.29]],[[.45,.40],[.57,.39],[.61,.53],[.54,.72],[.48,.61]],[[.78,.66],[.90,.64],[.94,.76],[.82,.81]],[[.31,.09],[.39,.08],[.37,.19],[.32,.20]]]){ec.beginPath();poly.forEach(([x,y],j)=>j?ec.lineTo(x*1024,y*512):ec.moveTo(x*1024,y*512));ec.closePath();ec.fill();}
+ ec.fillStyle='#e2f1ff';ec.fillRect(0,0,1024,20);ec.fillRect(0,488,1024,24);
+ const et=new THREE.CanvasTexture(earthCanvas);et.colorSpace=THREE.SRGBColorSpace;
+ mesh(new THREE.SphereGeometry(.48,32,20),new THREE.MeshStandardMaterial({map:et,roughness:.65}),0,0,0,globe);
+ const arc=mesh(new THREE.TorusGeometry(.53,.012,6,48),blue,0,0,0,globe);arc.rotation.x=.8;
+ const [sx,sz]=points[2],seat=group(sx,.78,sz);const fabric=mat(0x244d86),shell=mat(0xc5cbd6);
+ box(.66,.09,.57,0,.12,0,shell,seat);box(.60,.17,.55,0,.24,.02,fabric,seat);
+ const back=box(.64,.80,.16,0,.62,-.25,shell,seat);back.rotation.x=-.12;
+ const cushion=box(.55,.65,.11,0,.63,-.15,fabric,seat);cushion.rotation.x=-.12;
+ box(.39,.20,.13,0,1.02,-.16,fabric,seat);
+ for(const side of [-1,1]){box(.06,.32,.06,side*.33,.30,.15,shell,seat);box(.10,.07,.50,side*.34,.45,0,dark,seat);}
+ seat.rotation.y=Math.atan2(nx-sx,nz-sz);
+ const [wx,wz]=points[3],windowGroup=group(wx,1.25,wz);windowGroup.rotation.y=Math.atan2(nx-wx,nz-wz);
+ function ovalShape(w,h){const sh=new THREE.Shape();sh.absellipse(0,0,w,h,0,Math.PI*2,false,0);return sh;}
+ const frame=ovalShape(.44,.55);const hole=new THREE.Path();hole.absellipse(0,0,.34,.44,0,Math.PI*2,true,0);frame.holes.push(hole);
+ mesh(new THREE.ExtrudeGeometry(frame,{depth:.10,bevelEnabled:true,bevelSize:.025,bevelThickness:.025,bevelSegments:2}),shell,0,0,0,windowGroup);
+ const sky=mesh(new THREE.ShapeGeometry(ovalShape(.345,.445)),glow(0x81c9fa),0,0,-.015,windowGroup);
+ const clouds= new THREE.Group();windowGroup.add(clouds);for(let j=0;j<4;j++)ball(.11,-.18+j*.11,-.18+Math.sin(j)*.04,.015,glow(0xeaf6ff),clouds,[1.15,.55,.18]);
+ const [lx,lz]=points[4],luggage=group(lx,.76,lz);const bag=mat(0x254269);box(.51,.68,.32,0,.40,0,bag,luggage);for(const side of [-1,1]){box(.035,.67,.035,side*.19,.40,.175,shell,luggage);ball(.065,side*.17,.045,.02,dark,luggage);box(.035,.30,.035,side*.12,.91,0,shell,luggage);}box(.28,.055,.06,0,1.05,0,dark,luggage);luggage.rotation.y=Math.atan2(nx-lx,nz-lz);
+ const [px,pz]=points[5],phone=group(px,1.29,pz);phone.rotation.y=Math.atan2(nx-px,nz-pz);box(.51,.88,.075,0,0,0,dark,phone);
+ const display=mesh(new THREE.PlaneGeometry(.46,.79),new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false}),0,0,.042,phone);
+ new THREE.TextureLoader().load('./images/nextseat.png',t=>{t.colorSpace=THREE.SRGBColorSpace;display.material.map=t;display.material.needsUpdate=true;},undefined,()=>{display.material.color.setHex(0x0d3b8c);});
+ // The central panel explains the actual features rather than labelling props as features.
  const info=box(.70,1.25,.25,nx,.805,nz,dark);coll(nx,nz,.70,.25);const infoScreen=screen('NextSeat','E · Informação',nx,1.32,nz+.14,.9,.57);attach(infoScreen,projects[2],'Explorar NextSeat');attach(info,projects[2],'Explorar NextSeat');
- anim.push(t=>{globe.rotation.y=t*.25;marker.position.set(.48*Math.cos(t),.48*Math.sin(t)*.65,.48*Math.sin(t)*.76);const k=t%10;breath.scale.setScalar(.8+.55*(k<4?k/4:1-(k-4)/6));const v=.08+.92*((t%12)/12);bar.scale.x=v;bar.position.x=qx-.365+.365*v;cloud.position.y=1.24+.07*Math.sin(t);});
+ anim.push(t=>{globe.rotation.y=t*.20;clouds.position.x=.035*Math.sin(t*.8);});
  // Help! east/north quadrant. Six floating emoji cards around a real desk.
  const hx=24.35,hz=-13.25;ring(hx,hz,3.35,green);
- const emojis=['😟','😞','😤','😴','😌','🔥'],moods=['Ansioso','Triste','Zangado','Cansado','Feliz','Motivado'];
+ const moods=['Ansioso','Triste','Zangado','Cansado','Feliz','Motivado'];
+ const faceYellow=mat(0xffcc37),angryYellow=mat(0xffad39),ink=mat(0x42291b),eyeWhite=mat(0xfff9e9),tear=mat(0x5dcaff),flameOrange=mat(0xff651b),flameYellow=glow(0xffcf43);
+ function stroke(parent,pts,r=.025,m=ink){return mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p))),18,r,6,false),m,0,0,0,parent);}
+ function flame(parent,size,m,z){const sh=new THREE.Shape();sh.moveTo(0,-.43*size);sh.bezierCurveTo(-.56*size,-.35*size,-.52*size,.08*size,-.23*size,.35*size);sh.bezierCurveTo(-.27*size,.05*size,-.03*size,.16*size,.04*size,.61*size);sh.bezierCurveTo(.47*size,.30*size,.57*size,.02*size,.35*size,-.25*size);sh.quadraticCurveTo(.23*size,-.44*size,0,-.43*size);const o=mesh(new THREE.ExtrudeGeometry(sh,{depth:.14*size,bevelEnabled:true,bevelThickness:.055*size,bevelSize:.045*size,bevelSegments:3,curveSegments:12}),m,0,0,z,parent);return o;}
+ function emoji3d(j,x,z){
+  const o=group(x,1.42,z);o.rotation.y=Math.atan2(hx-x,hz-z);
+  if(j===5){flame(o,.90,flameOrange,-.075);flame(o,.54,flameYellow,.09).position.y=-.11;return o;}
+  ball(.43,0,0,0,j===2?angryYellow:faceYellow,o,[1,1,.95]);
+  for(const side of [-1,1]){
+   const ex=side*.16;
+   if(j===3||j===4){stroke(o,[[ex-.09,.09,.366],[ex,.065+(j===4?.07:-.025),.405],[ex+.09,.09,.366]],.027);}
+   else{ball(.103,ex,.075,.366,eyeWhite,o,[.78,1.15,.39]);ball(.046,ex,.06,.403,ink,o,[.85,1.15,.48]);}
+   if(j===0)stroke(o,[[ex-.10,.19+(side===1?.06:0),.33],[ex,.23,.365],[ex+.10,.19+(side===-1?.06:0),.33]],.023);
+   if(j===1)stroke(o,[[ex-.09,.19+(side===1?.04:0),.34],[ex,.22,.366],[ex+.09,.19+(side===-1?.04:0),.34]],.024);
+   if(j===2)stroke(o,[[ex-.10,.22-side*.07,.335],[ex,.19,.373],[ex+.10,.22+side*.07,.335]],.035);
+  }
+  if(j===0){ball(.11,0,-.15,.397,ink,o,[1,.65,.23]);}
+  if(j===1){stroke(o,[[-.13,-.20,.357],[0,-.125,.414],[.13,-.20,.357]],.028);ball(.065,.24,-.12,.345,tear,o,[.58,1.35,.4]);}
+  if(j===2){stroke(o,[[-.14,-.18,.36],[0,-.14,.42],[.14,-.18,.36]],.039);}
+  if(j===3){ball(.10,0,-.16,.402,ink,o,[.80,1.1,.22]);const zz=stroke(o,[[.27,.36,.15],[.40,.36,.15],[.27,.48,.15],[.40,.48,.15]],.018,blue);}
+  if(j===4){stroke(o,[[-.16,-.10,.371],[0,-.21,.39],[.16,-.10,.371]],.029);for(const side of [-1,1])ball(.07,side*.27,-.06,.31,mat(0xf39b50),o,[1,.45,.28]);}
+  return o;
+ }
  for(let j=0;j<6;j++){const a=j*Math.PI/3,x=hx+2.55*Math.sin(a),z=hz-2.55*Math.cos(a);pedestal(x,z,green);
-  const o=screen(emojis[j],moods[j],x,1.45,z,.91,.85,'#75e7c4');o.rotation.y=Math.atan2(hx-x,hz-z);anim.push(t=>{o.position.y=1.45+.12*Math.sin(t*1.3+j);});
+  const o=emoji3d(j,x,z);const baseYaw=o.rotation.y;anim.push(t=>{o.position.y=1.42+.12*Math.sin(t*1.3+j);o.rotation.y=baseYaw+.15*Math.sin(t*.65+j);});
  }
  box(1.48,.10,.72,hx,.98,hz,dark);coll(hx,hz,1.48,.72);for(const dx of [-.64,.64])box(.09,.79,.60,hx+dx,.535,hz,dark);
  box(.11,.29,.12,hx,1.17,hz-.15,dark);const pc=box(.91,.57,.10,hx,1.53,hz-.15,dark);
