@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createHelpTerminal } from './help-terminal.js';
 import { dutchFacade, dutchRow } from './architecture.js';
 import { exteriorMaterial, metricBox, metricCylinder, organicGrass } from './materials.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -613,7 +614,7 @@ function batchStatic(){
   scene.updateMatrixWorld(true);
   const buckets=new Map(),tmp=new THREE.Vector3();
   scene.traverse(o=>{
-    if(!o.isMesh||o.isInstancedMesh||o.userData.decoration||dynamicMeshes.has(o)||Array.isArray(o.material)||o.material.transparent||o.material.depthTest===false||o===destinationMarker) return;
+    if(!o.isMesh||o.isInstancedMesh||o.userData.decoration||o.userData.noBatch||dynamicMeshes.has(o)||Array.isArray(o.material)||o.material.transparent||o.material.depthTest===false||o===destinationMarker) return;
     // Evitar mover objetos de grupos que podem rodar ou desaparecer.
     if(o.parent!==scene && (o.parent.parent!==scene || o.parent===humanReference))return;
     if(o.parent!==scene && o.parent.children.some(child=>dynamicMeshes.has(child)||child.isLight))return;
@@ -639,6 +640,7 @@ function batchStatic(){
   }
 }
 batchStatic();
+const helpTerminal=createHelpTerminal();
 const prompt=document.querySelector('#project-prompt');
 const modal=document.querySelector('#project-modal');
 const title=document.querySelector('#project-title');
@@ -651,7 +653,7 @@ const targets=new Map(),interactionPosition=new THREE.Vector3();
 for(const action of [...projectsHall.interactables,...interiors.interactables])
   for(const mesh of action.meshes)targets.set(mesh,action);
 function getInteraction(){
-  if(navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
+  if(helpTerminal.active||navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
   const floorAction=projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode(),camera);
   if(floorAction)return floorAction;
   camera.updateMatrixWorld(true);
@@ -671,6 +673,7 @@ function closeProject(){
 }
 function openProject(project){
   if(!project || !modal)return;
+  if(project.terminal){navigation.setPaused(true);if(document.pointerLockElement===canvas)document.exitPointerLock?.();helpTerminal.open(()=>navigation.setPaused(false));return;}
   if(document.pointerLockElement===canvas)document.exitPointerLock?.();
   title.textContent=project.title;
   subtitle.textContent=project.subtitle;
@@ -685,6 +688,7 @@ function openProject(project){
 document.querySelector('#project-close')?.addEventListener('click',closeProject);
 modal?.addEventListener('click',(event)=>{if(event.target===modal)closeProject();});
 window.addEventListener('keydown',(event)=>{
+  if(helpTerminal.active)return;
   if(event.code==='Escape' && modal && !modal.hidden)closeProject();
   if(event.code==='KeyF'&&!event.repeat&&(!modal||modal.hidden)&&projectsHall.nearHunt(navigation.getPlayerPosition(),navigation.getMode())){event.preventDefault();projectsHall.resetHunt();}
   if(event.code==='KeyE' && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey && navigation.getMode()==='first') {

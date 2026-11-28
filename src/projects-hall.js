@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildExhibits } from './exhibits.js';
 import { exteriorMaterial, interiorMaterial, metricBox } from './materials.js';
 
 // Centro Tecnológico — primeira sala transitável, 1 unidade = 1 metro.
@@ -100,7 +101,7 @@ export function createProjectsHall({scene, obstacles}) {
   const projects=[
     {title:'Buddha Club',subtitle:'Onde tudo começou',detail:'O meu primeiro projeto, desenvolvido antes de utilizar inteligência artificial. Um trabalho de que me orgulho especialmente.',url:'https://codepen.io/eutudo94/full/jOZJgKL',image:'./images/buddhaclub.png',x:11.78,z:-4,rotation:Math.PI/2},
     {title:'HuntRed',subtitle:'Desafio de lógica · 100 casas',detail:'Preenche as 100 casas sem repetir: avança três posições na horizontal ou vertical, ou duas na diagonal. Joga no tabuleiro 3D ou abre a versão original.',url:'https://codepen.io/eutudo94/full/MWLVRLM',image:'./images/huntred.png',x:11.78,z:-12,rotation:Math.PI/2},
-    {title:'NextSeat',subtitle:'Projeto de aplicação',detail:'Projeto de desenvolvimento de uma aplicação. O código-fonte está disponível no GitHub.',url:'https://github.com/welele94/NextSeatProject',image:'./images/nextseat.png',x:28.22,z:-4,rotation:-Math.PI/2},
+    {title:'NextSeat',subtitle:'Companheiro de viagem',detail:'Aplicação React Native, Expo e TypeScript para reduzir a incerteza durante o voo: progresso, orientação contextual, modo offline e Calm Mode.',url:'https://github.com/welele94/NextSeatProject',image:'./images/nextseat.png',x:28.22,z:-4,rotation:-Math.PI/2},
     {title:'Help!',subtitle:'Aplicação de apoio e motivação',detail:'Projeto académico de programação orientada a objetos, persistência e interface, com atenção aos princípios SOLID.',url:'https://github.com/welele94/help_app',x:28.22,z:-12,rotation:-Math.PI/2}
   ];
   const frameMaterial=interiorMaterial('brushed',0x3c4650,{metalness:.25});
@@ -189,8 +190,7 @@ export function createProjectsHall({scene, obstacles}) {
   // Juntas entre painéis do revestimento, acima dos quadros e da circulação.
   for(const z of [-14,-10,-6,-2])ceilingPiece(16.30,.025,.025,20,8.915,z,metal);
   // NextSeat: exposição dedicada, fora do corredor central.
-  solid(3.2,.95,2.25,24.8,.655,-5.7,graphite,true);
-  solid(3.25,.065,2.3,24.8,1.165,-5.7,cyan);
+  
   // Maquete de avião comercial, referência visual ao NextSeat.
   const aircraft=new THREE.Group();aircraft.position.set(24.8,1.78,-5.7);scene.add(aircraft);
   const fuselageMat=new THREE.MeshStandardMaterial({color:0xe5eaf2,metalness:.18,roughness:.42});
@@ -216,8 +216,7 @@ export function createProjectsHall({scene, obstacles}) {
   const finShape=new THREE.Shape();finShape.moveTo(-.75,0);finShape.lineTo(-.70,.30);finShape.lineTo(-.52,.30);finShape.lineTo(-.40,0);finShape.closePath();
   airMesh(new THREE.ExtrudeGeometry(finShape,{depth:.035,bevelEnabled:false}),aircraftBlue,0,.04,-.0175);
   airMesh(new THREE.SphereGeometry(.064,12,8),metal,.60,.075,0);
-  solid(.48,.055,.48,24.8,1.215,-5.7,metal);
-  solid(.055,.50,.055,24.8,1.49,-5.7,graphite);
+  
   // HuntRed: tabuleiro jogável no chão, uma única textura e um único mesh.
   const boardX=12.1,boardZ=-16.6,cellSize=.68,boardSize=10*cellSize;
   const boardCanvas=document.createElement('canvas');boardCanvas.width=2048;boardCanvas.height=2048;
@@ -294,11 +293,7 @@ export function createProjectsHall({scene, obstacles}) {
   redraw();
   const huntSign=new THREE.Mesh(new THREE.PlaneGeometry(5.5,1.15),new THREE.MeshBasicMaterial({map:signTexture('HuntRed','100 casas · E para jogar'),toneMapped:false}));
   huntSign.position.set(15.5,2.8,-17.63);scene.add(huntSign);
-  // Help! e Buddha Club: bases dedicadas, reservadas para os modelos finais.
-  solid(2.4,.78,1.25,25.9,.57,-12.1,graphite,true);
-  solid(2.45,.045,1.30,25.9,.99,-12.1,neon(0x54f19a));
-  solid(2.4,.78,1.25,14.4,.57,-3.6,graphite,true);
-  solid(2.45,.045,1.30,14.4,.99,-3.6,purple);
+  const exhibits=buildExhibits({scene,obstacles,projects,interactables,aircraft});
   const labLights=[];
   // Luzes locais coloridas, sem sombras adicionais pesadas.
   for(const [x,z,color] of [[12.5,-7,0x15bfff],[27.5,-7,0x9b45ff],[20,-15,0x536bff]]){
@@ -317,6 +312,7 @@ export function createProjectsHall({scene, obstacles}) {
     // Não empurrar nem prender o jogador durante a animação.
     if(!touchesDoor(position,next)){angle=next;syncDoor(angle);}
     const inside=position.x>11.7 && position.x<28.3 && position.z>-17.75 && position.z<1.85;
+    exhibits.update(dt,inside&&mode==='first');
     for(const light of labLights)light.visible=inside&&mode==='first';
     roof.visible=mode!=='aerial'||!inside;
     ceilingDetails.visible=roof.visible;
