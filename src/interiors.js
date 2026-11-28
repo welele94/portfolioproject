@@ -9,7 +9,7 @@ export function createInteriors({scene,obstacles}){
   const mat=(color)=>new THREE.MeshStandardMaterial({color,roughness:.78});
   const oak=mat(0xb78a58),dark=mat(0x303b48),white=mat(0xece9df),black=mat(0x151b21),steel=mat(0x687785),blue=mat(0x276ba5),yellow=mat(0xe7ae28),cardboard=mat(0xb38a5d),fabric=mat(0x708881);
   const lit=new THREE.MeshBasicMaterial({color:0xe9f3ff});
-  function room({x,z,w,d,h,wall,roof,floor,doorWidth=1.6,interiorWall=wall}){
+  function room({x,z,w,d,h,wall,roof,floor,doorWidth=1.6,interiorWall=wall,doorX=0}){
     const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);
     const top=new THREE.Group();group.add(top);
     const localLights=[];
@@ -22,11 +22,13 @@ export function createInteriors({scene,obstacles}){
     box(w,.16,d,0,.08,0,floor);
     box(t,h,d,-w/2+t/2,h/2,0,wall,true);box(t,h,d,w/2-t/2,h/2,0,wall,true);
     box(w,h,t,0,h/2,-d/2+t/2,wall,true);
-    for(const sign of [-1,1])box(side,h,t,sign*(doorWidth/2+side/2),h/2,front-t/2,wall,true);
-    box(doorWidth,h-2.35,t,0,(h+2.35)/2,front-t/2,wall);
+    const left=doorX-doorWidth/2+w/2,right=w/2-doorX-doorWidth/2;
+    box(left,h,t,-w/2+left/2,h/2,front-t/2,wall,true);
+    box(right,h,t,w/2-right/2,h/2,front-t/2,wall,true);
+    box(doorWidth,h-2.35,t,doorX,(h+2.35)/2,front-t/2,wall);
     box(w+.35,.36,d+.35,0,h+.18,0,roof,false,top);
     // Porta articulada: collider orientado acompanha a folha.
-    const hinge=new THREE.Group();hinge.position.set(-doorWidth/2,.16,front-t/2);group.add(hinge);
+    const hinge=new THREE.Group();hinge.position.set(doorX-doorWidth/2,.16,front-t/2);group.add(hinge);
     const leaf=box(doorWidth-.035,2.18,.085,(doorWidth-.035)/2,1.09,0,dark,false,hinge);
     const handle=box(.08,.15,.15,doorWidth-.19,1.0,0,steel,false,hinge);
     const col={type:'oriented',x:0,z:0,w:doorWidth-.035,d:.085,angle:0};obstacles.push(col);
@@ -223,16 +225,32 @@ export function createInteriors({scene,obstacles}){
   // Dachser: 70% do comprimento em X para armazém, 30% para escritório.
   {
     const industrialFloor=interiorMaterial('epoxy',0x92989c,{roughness:.65});
-    const r=room({x:0,z:-56,w:51,d:26,h:10,wall:exteriorMaterial('concrete',0xe0e2e4),roof:exteriorMaterial('metal',0x57616b),floor:industrialFloor,doorWidth:2.8});
+    const r=room({x:0,z:-56,w:51,d:26,h:10,wall:exteriorMaterial('concrete',0xe0e2e4),roof:exteriorMaterial('metal',0x57616b),floor:industrialFloor,doorWidth:2.8,doorX:18});
     const {box,partition,table,chair,computer,light}=r;
     const split=10.2;
+    const officeBlue=interiorMaterial('laminate',0x315b84),officeWhite=interiorMaterial('laminate',0xf3f4f4),deskTop=interiorMaterial('wood',0xd6c6ab),officeWall=interiorMaterial('plaster',0xe8ecf1);
     const stripe=mat(0xe5b632),officeFloor=interiorMaterial('terrazzo',0xf2f1e8);
     // Escritório separado por parede completa e entrada junto à fachada sul.
     partition(.22,21.69,split,-2.045,9.84);partition(.22,1.49,split,12.035,9.84);
     box(.22,7.44,2.6,split,6.28,9.99,white);
+    // Porta de ligação interna, abre para o armazém e acompanha a colisão.
+    const gate=new THREE.Group();gate.position.set(split,.16,8.80);r.group.add(gate);
+    const gateLeaf=box(.085,2.25,2.36,0,1.125,1.18,officeBlue,false,gate);
+    const gateHandle=box(.19,.12,.08,0,1.02,2.19,steel,false,gate);
+    const gateCollider={type:'oriented',x:split,z:-56+9.98,w:2.36,d:.085,angle:Math.PI/2};obstacles.push(gateCollider);
+    let gateAngle=0,gateOpen=false;
+    function syncGate(a){gate.rotation.y=a;Object.assign(gateCollider,{x:split+1.18*Math.sin(a),z:-56+8.80+1.18*Math.cos(a),angle:a-Math.PI/2});}
+    syncGate(0);
+    interactables.push({meshes:[gateLeaf,gateHandle],label:()=>gateOpen?'Fechar acesso ao armazém':'Abrir acesso ao armazém',activate:()=>{gateOpen=!gateOpen;}});
+    internalDoors.push((dt,p)=>{
+      const goal=gateOpen?-Math.PI/2:0,a=gateAngle+Math.sign(goal-gateAngle)*Math.min(Math.abs(goal-gateAngle),dt*2);
+      const dx=p.x-(split+1.18*Math.sin(a)),dz=p.z-(-56+8.80+1.18*Math.cos(a)),theta=a-Math.PI/2;
+      if(Math.hypot(Math.max(0,Math.abs(dx*Math.cos(theta)-dz*Math.sin(theta))-1.18),Math.max(0,Math.abs(dx*Math.sin(theta)+dz*Math.cos(theta))-.043))>.36){gateAngle=a;syncGate(a);}
+    });
     box(14.85,.018,25.55,17.73,.172,0,officeFloor);
     box(14.85,.10,25.55,17.73,3.55,0,white,false,r.top);
-    for(const X of [-20,-11,-2,7,18])for(const Z of [-8,2,9])light(X,Z,0xe8f2ff);
+    for(const X of [-20,-11,-2,7,14,22])for(const Z of [-9,1,9])light(X,Z,0xe8f2ff);
+    for(const X of [14,22])for(const Z of [-9,1,9])box(2.1,.07,.38,X,3.44,Z,lit,false,r.top);
     const rackStart=r.group.children.length;
     // Racks com quatro níveis, corredores de 3–4 m e paletes em escala humana.
     for(const X of [-22,-16,-10,-4,2,7])for(const Z of [-9,-4,1]){
@@ -290,10 +308,82 @@ export function createInteriors({scene,obstacles}){
       obstacles.push({type:'box',x:X,z:-56+Z-1.15,w:.85,d:1.0});
     }
     forklift(-12,7.0);forklift(3,8.0);
-    // Escritório: três postos, impressora e armário.
-    for(const Z of [-7,-2,3]){table(15.0,Z,2.0,.85);computer(15.0,Z-.05);chair(15.0,Z+.85);}
-    box(1.6,.85,.6,20.5,1.5- .91,8.4,white,true);box(.56,.38,.45,20.5,1.2,8.4,steel);
-    box(.65,2.1,1.7,24.0,1.21,-9.8,steel,true);
+    // Receção, open space e zona técnica, à escala humana.
+    const extraStart=r.group.children.length;
+    function signAt(text,X,Y,Z,W=2.5,H=.5,rot=0){
+      const cv=document.createElement('canvas');cv.width=512;cv.height=128;
+      const ct=cv.getContext('2d');ct.fillStyle='#175b98';ct.fillRect(0,0,512,128);ct.fillStyle='#fff';ct.font='bold 54px system-ui';ct.textAlign='center';ct.textBaseline='middle';ct.fillText(text,256,64,480);
+      const tx=new THREE.CanvasTexture(cv);tx.colorSpace=THREE.SRGBColorSpace;
+      const o=new THREE.Mesh(new THREE.PlaneGeometry(W,H),new THREE.MeshBasicMaterial({map:tx,toneMapped:false}));o.position.set(X,Y,Z);o.rotation.y=rot;r.group.add(o);
+    }
+    // Balcão visível da entrada, corredor livre à esquerda para o armazém.
+    box(4.0,1.05,.72,20.0,.685,8.0,officeBlue,true);
+    box(4.15,.09,.91,20.0,1.25,8.0,deskTop);
+    box(.09,.95,.95,22.0,.64,7.49,officeBlue,true);
+    computer(20.3,7.96);chair(20.3,6.9,-1);
+    signAt('RECEÇÃO',20, .87,8.38,2.4,.48);
+    signAt('DACHSER',18,2.85,12.76,3.8,.65,Math.PI);
+    signAt('ARMAZÉM',10.34,2.80,9.99,2.25,.44,Math.PI/2);
+    signAt('ESCRITÓRIO',10.06,2.80,9.99,2.25,.44,-Math.PI/2);
+    // Espera junto à parede, sem ocupar a porta.
+    for(const Z of [10.1,11.1]){box(.75,.40,.86,24.5,.51,Z,fabric,true);box(.16,.67,.86,24.82,.85,Z,fabric);}
+    box(.65,.12,.70,23.3,.67,10.6,deskTop,true);
+    // Open office com seis postos, acesso de 2 m entre as filas.
+    for(const X of [14.2,20.7])for(const Z of [-.8,2.2,5.0]){
+      table(X,Z,2.7,.85);computer(X-.62,Z);computer(X+.62,Z);chair(X,Z+.9);
+      box(.38,.60,.54,X+1.03,.49,Z,officeWhite,true);
+      box(.25,.032,.31,X+.95,.995,Z+.20,white);
+    }
+    // Armários e multifunções.
+    for(const Z of [-.5,2.0,4.5]){box(.56,1.9,1.55,24.85,1.11,Z,officeWhite,true);box(.045,.12,.25,24.55,1.22,Z,steel);}
+    box(1.7,.75,.70,11.0,.535,3.4,officeWhite,true);
+    box(.72,.60,.57,11.0,1.21,3.4,steel);
+    box(.72,.07,.55,11.0,1.54,3.4,black);
+    box(.42,.05,.22,11.0,1.58,3.52,white);
+    // Divisão IT: parede transversal com passagem livre no centro.
+    for(const [X,W] of [[13.4,5.8],[22.4,5.8]])box(W,3.28,.18,X,1.80,-6.0,officeWall,true);
+    box(3.2,.72,.18,17.9,3.08,-6,officeWall);
+    signAt('IT SUPPORT',17.9,2.90,-5.89,2.6,.47);
+    table(14,-9.6,2.8,1.0);computer(13.45,-9.6);computer(14.55,-9.6);chair(14,-8.5);
+    box(1.0,2.15,1.02,23.7,1.24,-10.9,dark,true);
+    for(let k=0;k<8;k++){box(.90,.16,.05,23.7,.48+k*.23,-10.365,steel);for(let n=0;n<6;n++)box(.065,.035,.025,23.38+n*.11,.48+k*.23,-10.325,blue);}
+    box(.92,.24,.055,23.7,.39,-10.33,black);
+    box(3.7,1.45,.065,18.3,2.0,-12.76,officeWhite);
+    for(let k=0;k<4;k++)box(2.6-k*.28,.025,.025,18.1,2.45-k*.21,-12.71,officeBlue);
+    signAt('REDE · SUPORTE · SISTEMAS',18.3,2.85,-12.68,3.8,.42);
+    // Staging de mercadoria próximo dos cais, fora dos corredores.
+    const cargo=interiorMaterial('wood',0xc7a779);
+    for(const X of [-24,-18,-12,-6,1,7]){
+      // zona de preparação no corredor frontal, afastada dos empilhadores.
+      const Z=5.1;
+      box(1.8,.012,1.6,X,.176,Z,stripe);
+      box(1.56,.014,1.38,X,.184,Z,industrialFloor);
+      for(let n=0;n<3;n++)box(1.2,.10,.26,X,.25,Z+(n-1)*.34,cargo);
+      box(1.08,.72,.91,X,.67,Z,cardboard,true);
+      box(.075,.72,.93,X,.67,Z,white);
+    }
+    // Proteções de colunas e sinalética industrial.
+    for(const X of [-24,-18,-12,-6,0,6]){
+      box(.16,1.0,.16,X,.66,-11.2,yellow,true);
+      for(const Y of [.36,.72])box(.17,.14,.17,X,Y,-11.2,black);
+    }
+    signAt('STAGING / EXPEDIÇÃO',-14,2.8,-12.65,4.6,.55);
+    signAt('CIRCULAÇÃO PEDONAL',-7,2.9,12.76,4.4,.55,Math.PI);
+    // Lotes estáticos por material e zona; manter sinalética e portas separadas.
+    const extraBatches=new Map();
+    for(const mesh of r.group.children.slice(extraStart)){
+      if(!mesh.isMesh||mesh.geometry.type!=='BoxGeometry')continue;
+      const key=[mesh.material.uuid,Math.floor(mesh.position.x/6),Math.floor(mesh.position.z/6)].join(':');
+      if(!extraBatches.has(key))extraBatches.set(key,[]);
+      extraBatches.get(key).push(mesh);
+    }
+    for(const batch of extraBatches.values()){
+      if(batch.length<2)continue;
+      const parts=batch.map(o=>{o.updateMatrix();return o.geometry.clone().applyMatrix4(o.matrix);});
+      const geometry=mergeGeometries(parts,false);parts.forEach(g=>g.dispose());if(!geometry)continue;
+      const merged=new THREE.Mesh(geometry,batch[0].material);merged.castShadow=true;merged.receiveShadow=true;r.group.add(merged);
+      for(const o of batch){o.removeFromParent();o.geometry.dispose();}
+    }
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;
     const ctx=canvas.getContext('2d');ctx.fillStyle='#13579b';ctx.fillRect(0,0,1024,256);ctx.fillStyle='#fff';ctx.font='bold 126px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DACHSER',512,128);
     const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;

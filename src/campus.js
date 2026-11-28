@@ -186,7 +186,9 @@ walkCurve([[-7.15,-25],[0,-25]],2.1);
 plane(19.2,4.6,-19.7,23.5,road,.075);
 plane(4.6,4.6,-10.4,21.5,road,.075);
 for(let k=0;k<5;k++)plane(.23,4.5,-9.6+k*.36,23.5,roadPaint,.112);
-walk(0,10,0,-43,3.0);
+walk(0,10,0,-41.6,3.0);
+walk(0,-41.6,18,-41.6,2.0);
+walk(18,-41.6,18,-43,2.0);
 // Novos apartamentos em banda, orientados no eixo horizontal.
 walkCurve([[-13.7,-26],[-15,-26.3],[-15,-27]],1.8);
 // Apartamentos orientais: passagem a sul do edifício.
@@ -240,11 +242,15 @@ for(const side of [-1,1]){
 }
 block(51,8.85,.065,0,5.575,-69.04,dachserCladding,scene,false);
 block(51,1.15,.075,0,.575,-69.05,dachserBase,scene,false);
-for(const side of [-1,1]){
-  block(24.1,10,.065,side*13.45,5,-42.96,dachserCladding,scene,false);
-  block(24.1,1.15,.075,side*13.45,.575,-42.91,dachserBase,scene,false);
+// Entrada principal deslocada para o escritório (X=18).
+for(const [X,W] of [[-4.45,42.1],[22.45,6.1]]){
+  block(W,10,.065,X,5,-42.96,dachserCladding,scene,false);
+  block(W,1.15,.075,X,.575,-42.91,dachserBase,scene,false);
 }
-block(2.8,7.65,.065,0,6.175,-42.96,dachserCladding,scene,false);
+block(2.8,7.65,.065,18,6.175,-42.96,dachserCladding,scene,false);
+for(const X of [16.52,19.48])block(.14,2.4,.18,X,1.2,-42.80,dockTrim,scene,false);
+block(3.1,.15,.18,18,2.43,-42.8,dockTrim,scene,false);
+block(3.55,.18,.95,18,2.72,-42.45,dockTrim,scene,false);
 // Letras de fachada, em amarelo sobre a chapa azul.
 function industrialSign(text,x,y,z,w,h,back=false){
   const cv=document.createElement('canvas');cv.width=1024;cv.height=256;
@@ -255,6 +261,7 @@ function industrialSign(text,x,y,z,w,h,back=false){
   mesh.position.set(x,y,z);mesh.rotation.y=back?Math.PI:0;scene.add(mesh);
 }
 industrialSign('DACHSER',0,7.5,-42.88,16,3.0);
+industrialSign('RECEÇÃO',18,3.22,-42.86,3.8,.62);
 // Cais numerados, com abrigos de borracha, molduras e plataforma de betão.
 for(const [idx,X] of [-21,-14,-7,0,7].entries()){
   plane(.10,18,X-1.85,-79,roadPaint,.11);
@@ -271,7 +278,7 @@ for(const [idx,X] of [-21,-14,-7,0,7].entries()){
 }
 // Faixa de janelas do escritório, sem alterar as paredes ou colisões existentes.
 const officeGlass=mat('#536d85',{metalness:.18,roughness:.27});
-for(const X of [12,16,20,23.5]){
+for(const X of [12,14.8,21.4,24]){
   block(2.5,1.30,.10,X,2.35,-42.87,dockTrim,scene,false);
   block(2.36,1.16,.045,X,2.35,-42.79,officeGlass,scene,false);
   block(.055,1.16,.04,X,2.35,-42.75,dockTrim,scene,false);
