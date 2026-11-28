@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createCabin } from './nextseat-cabin.js';
 export function buildExhibits({scene,obstacles,projects,interactables,aircraft}){
  const g=new THREE.Group();scene.add(g);const anim=[];
  const mat=(color,metalness=0)=>new THREE.MeshStandardMaterial({color,metalness,roughness:.48});
@@ -17,42 +18,8 @@ export function buildExhibits({scene,obstacles,projects,interactables,aircraft})
  function ring(x,z,r,m){const o=mesh(new THREE.RingGeometry(r-.035,r,64),m,x,.192,z);o.rotation.x=-Math.PI/2;}
  function pedestal(x,z,m){cyl(.45,.55,x,.455,z,dark);cyl(.47,.035,x,.747,z,m);coll(x,z,.85,.85);}
  function attach(target,project,label,terminal=false){interactables.push({meshes:[target],label:()=>label,activate:()=>terminal?{...project,terminal:true}:project});}
- // NextSeat, east/south quadrant. Small individual plinths, no raised floor.
- const nx=24.35,nz=-3.9,R=2.65;ring(nx,nz,3.35,blue);
- // Physical objects immediately associated with a passenger's journey.
- const names=['Avião','Globo terrestre','Banco de avião','Janela de cabine','Bagagem','NextSeat App'];
- const points=names.map((_,j)=>[nx+R*Math.sin(j*Math.PI/3),nz-R*Math.cos(j*Math.PI/3)]);
- for(let j=0;j<6;j++){const [x,z]=points[j];pedestal(x,z,blue);}
- aircraft.position.set(points[0][0],1.27,points[0][1]);aircraft.scale.setScalar(.85);
- const [gx,gz]=points[1],globe=group(gx,1.30,gz);
- const earthCanvas=document.createElement('canvas');earthCanvas.width=1024;earthCanvas.height=512;const ec=earthCanvas.getContext('2d');ec.fillStyle='#2163a0';ec.fillRect(0,0,1024,512);
- // Simplified continent silhouettes, decorative rather than navigation data.
- ec.fillStyle='#73ab70';
- for(const poly of [[[.08,.22],[.17,.13],[.28,.17],[.31,.28],[.23,.37],[.22,.47],[.16,.41],[.12,.31]],[[.24,.47],[.33,.49],[.36,.62],[.30,.82],[.26,.72]],[[.43,.22],[.50,.17],[.60,.18],[.66,.25],[.78,.17],[.91,.25],[.88,.41],[.78,.45],[.72,.38],[.65,.50],[.59,.37],[.53,.39],[.49,.29]],[[.45,.40],[.57,.39],[.61,.53],[.54,.72],[.48,.61]],[[.78,.66],[.90,.64],[.94,.76],[.82,.81]],[[.31,.09],[.39,.08],[.37,.19],[.32,.20]]]){ec.beginPath();poly.forEach(([x,y],j)=>j?ec.lineTo(x*1024,y*512):ec.moveTo(x*1024,y*512));ec.closePath();ec.fill();}
- ec.fillStyle='#e2f1ff';ec.fillRect(0,0,1024,20);ec.fillRect(0,488,1024,24);
- const et=new THREE.CanvasTexture(earthCanvas);et.colorSpace=THREE.SRGBColorSpace;
- mesh(new THREE.SphereGeometry(.48,32,20),new THREE.MeshStandardMaterial({map:et,roughness:.65}),0,0,0,globe);
- const arc=mesh(new THREE.TorusGeometry(.53,.012,6,48),blue,0,0,0,globe);arc.rotation.x=.8;
- const [sx,sz]=points[2],seat=group(sx,.78,sz);const fabric=mat(0x244d86),shell=mat(0xc5cbd6);
- box(.66,.09,.57,0,.12,0,shell,seat);box(.60,.17,.55,0,.24,.02,fabric,seat);
- const back=box(.64,.80,.16,0,.62,-.25,shell,seat);back.rotation.x=-.12;
- const cushion=box(.55,.65,.11,0,.63,-.15,fabric,seat);cushion.rotation.x=-.12;
- box(.39,.20,.13,0,1.02,-.16,fabric,seat);
- for(const side of [-1,1]){box(.06,.32,.06,side*.33,.30,.15,shell,seat);box(.10,.07,.50,side*.34,.45,0,dark,seat);}
- seat.rotation.y=Math.atan2(nx-sx,nz-sz);
- const [wx,wz]=points[3],windowGroup=group(wx,1.25,wz);windowGroup.rotation.y=Math.atan2(nx-wx,nz-wz);
- function ovalShape(w,h){const sh=new THREE.Shape();sh.absellipse(0,0,w,h,0,Math.PI*2,false,0);return sh;}
- const frame=ovalShape(.44,.55);const hole=new THREE.Path();hole.absellipse(0,0,.34,.44,0,Math.PI*2,true,0);frame.holes.push(hole);
- mesh(new THREE.ExtrudeGeometry(frame,{depth:.10,bevelEnabled:true,bevelSize:.025,bevelThickness:.025,bevelSegments:2}),shell,0,0,0,windowGroup);
- const sky=mesh(new THREE.ShapeGeometry(ovalShape(.345,.445)),glow(0x81c9fa),0,0,-.015,windowGroup);
- const clouds= new THREE.Group();windowGroup.add(clouds);for(let j=0;j<4;j++)ball(.11,-.18+j*.11,-.18+Math.sin(j)*.04,.015,glow(0xeaf6ff),clouds,[1.15,.55,.18]);
- const [lx,lz]=points[4],luggage=group(lx,.76,lz);const bag=mat(0x254269);box(.51,.68,.32,0,.40,0,bag,luggage);for(const side of [-1,1]){box(.035,.67,.035,side*.19,.40,.175,shell,luggage);ball(.065,side*.17,.045,.02,dark,luggage);box(.035,.30,.035,side*.12,.91,0,shell,luggage);}box(.28,.055,.06,0,1.05,0,dark,luggage);luggage.rotation.y=Math.atan2(nx-lx,nz-lz);
- const [px,pz]=points[5],phone=group(px,1.29,pz);phone.rotation.y=Math.atan2(nx-px,nz-pz);box(.51,.88,.075,0,0,0,dark,phone);
- const display=mesh(new THREE.PlaneGeometry(.46,.79),new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false}),0,0,.042,phone);
- new THREE.TextureLoader().load('./images/nextseat.png',t=>{t.colorSpace=THREE.SRGBColorSpace;display.material.map=t;display.material.needsUpdate=true;},undefined,()=>{display.material.color.setHex(0x0d3b8c);});
- // The central panel explains the actual features rather than labelling props as features.
- const info=box(.70,1.25,.25,nx,.805,nz,dark);coll(nx,nz,.70,.25);const infoScreen=screen('NextSeat','E · Informação',nx,1.32,nz+.14,.9,.57);attach(infoScreen,projects[2],'Explorar NextSeat');attach(info,projects[2],'Explorar NextSeat');
- anim.push(t=>{globe.rotation.y=t*.20;clouds.position.x=.035*Math.sin(t*.8);});
+ aircraft.removeFromParent();
+ const cabin=createCabin({parent:g,obstacles,project:projects[2],interactables});
  // Help! east/north quadrant. Six floating emoji cards around a real desk.
  const hx=24.35,hz=-13.25;ring(hx,hz,3.35,green);
  const moods=['Ansioso','Triste','Zangado','Cansado','Feliz','Motivado'];
@@ -97,5 +64,5 @@ export function buildExhibits({scene,obstacles,projects,interactables,aircraft})
  let lastFrame=-1;anim.push(t=>{for(let j=0;j<beams.length;j++){const {pivot,beam}=beams[j];pivot.rotation.z=Math.sin(t*.8+j*1.7)*.53;pivot.rotation.x=Math.cos(t*.62+j)*.48;beam.material.color.setHSL((.74+t*.035+j*.13)%1,.85,.6);}const tick=Math.floor(t*5);if(tick!==lastFrame){lastFrame=tick;for(let j=0;j<36;j++)tiles.setColorAt(j,new THREE.Color().setHSL((.68+.17*Math.sin(j*.5+t*1.5)+t*.045)%1,.8,.42+.14*Math.sin(j+t*2)));tiles.instanceColor.needsUpdate=true;}});
  // Keep animated groups intact when the campus merges static geometry.
  g.traverse(o=>{if(o.isMesh)o.userData.noBatch=true;});
- let elapsed=0;return {update(dt,inside){if(!inside)return;elapsed+=dt;for(const fn of anim)fn(elapsed);}};
+ let elapsed=0;return {update(dt,inside,player){if(!inside)return;elapsed+=dt;cabin.update(dt,elapsed,player);for(const fn of anim)fn(elapsed);}};
 }

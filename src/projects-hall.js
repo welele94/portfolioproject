@@ -312,7 +312,7 @@ export function createProjectsHall({scene, obstacles}) {
     // Não empurrar nem prender o jogador durante a animação.
     if(!touchesDoor(position,next)){angle=next;syncDoor(angle);}
     const inside=position.x>11.7 && position.x<28.3 && position.z>-17.75 && position.z<1.85;
-    exhibits.update(dt,inside&&mode==='first');
+    exhibits.update(dt,inside&&mode==='first',position);
     for(const light of labLights)light.visible=inside&&mode==='first';
     roof.visible=mode!=='aerial'||!inside;
     ceilingDetails.visible=roof.visible;

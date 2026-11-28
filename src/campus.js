@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createHelpTerminal } from './help-terminal.js';
+import { createNextSeatDemo } from './nextseat-demo.js';
 import { dutchFacade, dutchRow } from './architecture.js';
 import { exteriorMaterial, metricBox, metricCylinder, organicGrass } from './materials.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -641,6 +642,7 @@ function batchStatic(){
 }
 batchStatic();
 const helpTerminal=createHelpTerminal();
+const nextSeatDemo=createNextSeatDemo();
 const prompt=document.querySelector('#project-prompt');
 const modal=document.querySelector('#project-modal');
 const title=document.querySelector('#project-title');
@@ -653,7 +655,7 @@ const targets=new Map(),interactionPosition=new THREE.Vector3();
 for(const action of [...projectsHall.interactables,...interiors.interactables])
   for(const mesh of action.meshes)targets.set(mesh,action);
 function getInteraction(){
-  if(helpTerminal.active||navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
+  if(helpTerminal.active||nextSeatDemo.active||navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
   const floorAction=projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode(),camera);
   if(floorAction)return floorAction;
   camera.updateMatrixWorld(true);
@@ -673,6 +675,8 @@ function closeProject(){
 }
 function openProject(project){
   if(!project || !modal)return;
+  if(project.seat){navigation.sit(project.seat);return;}
+  if(project.nextseatDemo){navigation.setPaused(true);if(document.pointerLockElement===canvas)document.exitPointerLock?.();nextSeatDemo.open(()=>navigation.setPaused(false));return;}
   if(project.terminal){navigation.setPaused(true);if(document.pointerLockElement===canvas)document.exitPointerLock?.();helpTerminal.open(()=>navigation.setPaused(false));return;}
   if(document.pointerLockElement===canvas)document.exitPointerLock?.();
   title.textContent=project.title;
@@ -688,13 +692,14 @@ function openProject(project){
 document.querySelector('#project-close')?.addEventListener('click',closeProject);
 modal?.addEventListener('click',(event)=>{if(event.target===modal)closeProject();});
 window.addEventListener('keydown',(event)=>{
-  if(helpTerminal.active)return;
+  if(helpTerminal.active||nextSeatDemo.active)return;
+  if(event.code==='Escape'&&navigation.isSeated()&&(!modal||modal.hidden)){navigation.stand();return;}
   if(event.code==='Escape' && modal && !modal.hidden)closeProject();
   if(event.code==='KeyF'&&!event.repeat&&(!modal||modal.hidden)&&projectsHall.nearHunt(navigation.getPlayerPosition(),navigation.getMode())){event.preventDefault();projectsHall.resetHunt();}
   if(event.code==='KeyE' && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey && navigation.getMode()==='first') {
     event.preventDefault();
     if(modal && !modal.hidden) closeProject();
-    else {const action=getInteraction();const project=action?.activate();if(project)openProject(project);}
+    else {const action=getInteraction();if(navigation.isSeated()&&(!action||action.label()==='Sentar no banco'))navigation.stand();else {const project=action?.activate();if(project)openProject(project);}}
   }
 });
 canvas.addEventListener('click',()=>{

@@ -8,7 +8,7 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
   const RUN_SPEED = 6.2;  // sprint: ~10 s até à porta dos Projetos
   const BOUNDS = {minX:-28.8,maxX:28.8,minZ:-94.0,maxZ:43.0};
   const player = new THREE.Vector3(spawn.x,eyeHeight,spawn.z);
-  let paused=false;
+  let paused=false,seated=null;
   let mode='aerial',yaw=-.75,pitch=0,clockStarted=false,elapsed=0,completed=false;
   let aerialPosition = camera.position.clone();
   let aerialTarget = controls.target.clone();
@@ -48,8 +48,11 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
     camera.rotation.order='YXZ';
     camera.rotation.set(pitch,yaw,0);
   }
+  function stand(){if(!seated)return;player.copy(seated.position);yaw=seated.yaw;pitch=seated.pitch;seated=null;keys.clear();camera.position.copy(player);look();}
+  function sit(seat){if(seated||mode!=='first')return;seated={position:player.clone(),yaw,pitch};player.set(seat.x,seat.y,seat.z);yaw=seat.yaw;pitch=seat.pitch;keys.clear();camera.position.copy(player);look();}
   function setMode(next) {
     if(next===mode)return;
+    stand();
     keys.clear();
     if(next==='first') {
       aerialPosition.copy(camera.position);
@@ -75,6 +78,7 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
     if(help)help.hidden=mode!=='first';
   }
   function reset() {
+    stand();
     player.set(spawn.x,eyeHeight,spawn.z);
     elapsed=0;clockStarted=false;completed=false;
     yaw=-.75;pitch=0;
@@ -115,7 +119,7 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
     const forward=Number(keys.has('KeyW')||keys.has('ArrowUp'))-Number(keys.has('KeyS')||keys.has('ArrowDown'));
     const strafe=Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft'));
     const length=Math.hypot(forward,strafe);
-    if(length>0) {
+    if(length>0&&!seated) {
       const speed=(keys.has('ShiftLeft')||keys.has('ShiftRight'))?RUN_SPEED:WALK_SPEED;
       const dx=(-Math.sin(yaw)*forward+Math.cos(yaw)*strafe)/length*speed*dt;
       const dz=(-Math.cos(yaw)*forward-Math.sin(yaw)*strafe)/length*speed*dt;
@@ -136,5 +140,5 @@ export function createNavigation({camera, canvas, controls, obstacles, spawn, de
     updateHud();
   }
   updateHud();
-  return { update, setPaused(value){paused=value;keys.clear();if(viewButton)viewButton.disabled=value;if(restartButton)restartButton.disabled=value;}, getMode:()=>mode, getPlayerPosition:()=>player, setMode };
+  return { update, sit, stand, isSeated:()=>!!seated, setPaused(value){paused=value;keys.clear();if(viewButton)viewButton.disabled=value;if(restartButton)restartButton.disabled=value;}, getMode:()=>mode, getPlayerPosition:()=>player, setMode };
 }
