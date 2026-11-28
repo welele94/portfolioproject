@@ -223,7 +223,7 @@ export function createProjectsHall({scene, obstacles}) {
   const boardCanvas=document.createElement('canvas');boardCanvas.width=2048;boardCanvas.height=2048;
   const boardCtx=boardCanvas.getContext('2d'),boardTexture=sharpTexture(boardCanvas);
   const boardMesh=new THREE.Mesh(new THREE.PlaneGeometry(boardSize,boardSize),new THREE.MeshBasicMaterial({map:boardTexture,toneMapped:false}));
-  boardMesh.rotation.x=-Math.PI/2;boardMesh.position.set(boardX+boardSize/2,.196,boardZ+boardSize/2);scene.add(boardMesh);
+  boardMesh.userData.decoration=true;boardMesh.rotation.x=-Math.PI/2;boardMesh.position.set(boardX+boardSize/2,.196,boardZ+boardSize/2);scene.add(boardMesh);
   const red=neon(0xf25050);
   for(const z of [boardZ-.035,boardZ+boardSize+.035])solid(boardSize+.14,.018,.05,boardX+boardSize/2,.197,z,red);
   for(const x of [boardX-.035,boardX+boardSize+.035])solid(.05,.018,boardSize,x,.197,boardZ+boardSize/2,red);
@@ -244,12 +244,12 @@ export function createProjectsHall({scene, obstacles}) {
       const x=k%10*n,y=Math.floor(k/10)*n;
       boardCtx.fillStyle=k===error?'#f27059':values[k]?'#ffcc00':allowed.has(k)?'#ffeb99':'#f5f5f5';
       boardCtx.fillRect(x+5,y+5,n-10,n-10);
-      if(k===hover){boardCtx.strokeStyle='#e13434';boardCtx.lineWidth=12;boardCtx.strokeRect(x+12,y+12,n-24,n-24);}
+      
       if(values[k]){boardCtx.fillStyle='#282015';boardCtx.fillText(String(values[k]),x+n/2,y+n/2);}
     }
     boardTexture.needsUpdate=true;
     const status=score===100?'Parabéns! Completaste o HuntRed.':score>0&&!allowed.size?'Sem movimentos válidos. Resultado: '+score+'/100':score===0?'Escolhe qualquer casa para começar.':'Escolhe uma casa amarela clara.';
-    hud.textContent='HuntRed   '+score+' / 100\n'+status+'\nE — marcar casa · F — reiniciar\nSalta 2 casas em linha ou 1 na diagonal.';
+    hud.textContent='HuntRed   '+score+' / 100\n'+status+'\nMira + E ou clique — marcar · F — reiniciar\nSalta 2 casas em linha ou 1 na diagonal.';
   }
   function play(){
     if(hover<0||score===100||(score>0&&!allowed.size))return;
@@ -259,17 +259,36 @@ export function createProjectsHall({scene, obstacles}) {
     redraw();
   }
   function resetHunt(){values.fill(0);last=-1;score=0;error=-1;allowed.clear();redraw();}
-  const floorAction={label:()=>score===100?'HuntRed concluído':score>0&&!allowed.size?'HuntRed — F para reiniciar':'Jogar HuntRed nesta casa',activate:()=>{play();}};
-  function huntAction(position,mode){
-    if(mode!=='first')return null;
-    const col=Math.floor((position.x-boardX)/cellSize),row=Math.floor((position.z-boardZ)/cellSize);
-    return col>=0&&col<10&&row>=0&&row<10?floorAction:null;
+  // Seleção por mira central: interseção com o plano do tabuleiro.
+  // O contorno é uma geometria leve e não obriga a redesenhar a textura ao mirar.
+  const aimRay=new THREE.Raycaster(),aimCenter=new THREE.Vector2(0,0);
+  const aimOutline=new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-.32,0,-.32),new THREE.Vector3(.32,0,-.32),
+    new THREE.Vector3(.32,0,.32),new THREE.Vector3(-.32,0,.32)
+  ]),new THREE.LineBasicMaterial({color:0xe13434,toneMapped:false}));
+  aimOutline.visible=false;aimOutline.userData.decoration=true;scene.add(aimOutline);
+  function nearHunt(position,mode){
+    return mode==='first'&&position.x>11.8&&position.x<20.5&&position.z>-17.7&&position.z<-8.2;
   }
-  function updateHunt(position,mode){
-    const active=!!huntAction(position,mode);
-    hud.hidden=!active;
-    const next=active?Math.floor((position.z-boardZ)/cellSize)*10+Math.floor((position.x-boardX)/cellSize):-1;
-    if(next!==hover){hover=next;redraw();}
+  function aimedCell(position,mode,camera){
+    if(!camera||!nearHunt(position,mode))return -1;
+    camera.updateMatrixWorld(true);
+    aimRay.setFromCamera(aimCenter,camera);aimRay.far=9;
+    const hit=aimRay.intersectObject(boardMesh,false)[0];
+    if(!hit)return -1;
+    const col=Math.floor((hit.point.x-boardX)/cellSize),row=Math.floor((hit.point.z-boardZ)/cellSize);
+    return col>=0&&col<10&&row>=0&&row<10?row*10+col:-1;
+  }
+  function huntAction(position,mode,camera){
+    const cell=aimedCell(position,mode,camera);
+    if(cell<0)return null;
+    return {label:()=>score===100?'HuntRed concluído':score>0&&!allowed.size?'HuntRed — F para reiniciar':'Marcar casa no HuntRed',activate:()=>{hover=cell;play();}};
+  }
+  function updateHunt(position,mode,camera){
+    hud.hidden=!nearHunt(position,mode);
+    hover=aimedCell(position,mode,camera);
+    aimOutline.visible=hover>=0;
+    if(hover>=0)aimOutline.position.set(boardX+(hover%10+.5)*cellSize,.207,boardZ+(Math.floor(hover/10)+.5)*cellSize);
     if(error>=0&&performance.now()>errorUntil){error=-1;redraw();}
   }
   redraw();
@@ -290,8 +309,8 @@ export function createProjectsHall({scene, obstacles}) {
   mainLight.position.set(20,4.2,-8);mainLight.visible=false;labLights.push(mainLight);scene.add(mainLight);
 
   // O teto permanece fechado em primeira pessoa; apenas a vista aérea permite inspeção.
-  function update(dt,position,mode='first'){
-    updateHunt(position,mode);
+  function update(dt,position,mode='first',camera){
+    updateHunt(position,mode,camera);
     aircraft.rotation.y+=dt*.55;
     const targetAngle=doorOpen?Math.PI/2:0;
     const next=angle+Math.sign(targetAngle-angle)*Math.min(Math.abs(targetAngle-angle),dt*2.2);
@@ -303,5 +322,5 @@ export function createProjectsHall({scene, obstacles}) {
     ceilingDetails.visible=roof.visible;
     return inside;
   }
-  return {update,projects,interactables,huntAction,resetHunt};
+  return {update,projects,interactables,huntAction,resetHunt,nearHunt};
 }

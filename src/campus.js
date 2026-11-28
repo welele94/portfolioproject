@@ -652,7 +652,7 @@ for(const action of [...projectsHall.interactables,...interiors.interactables])
   for(const mesh of action.meshes)targets.set(mesh,action);
 function getInteraction(){
   if(navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
-  const floorAction=projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode());
+  const floorAction=projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode(),camera);
   if(floorAction)return floorAction;
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
@@ -686,12 +686,16 @@ document.querySelector('#project-close')?.addEventListener('click',closeProject)
 modal?.addEventListener('click',(event)=>{if(event.target===modal)closeProject();});
 window.addEventListener('keydown',(event)=>{
   if(event.code==='Escape' && modal && !modal.hidden)closeProject();
-  if(event.code==='KeyF'&&!event.repeat&&(!modal||modal.hidden)&&projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode())){event.preventDefault();projectsHall.resetHunt();}
+  if(event.code==='KeyF'&&!event.repeat&&(!modal||modal.hidden)&&projectsHall.nearHunt(navigation.getPlayerPosition(),navigation.getMode())){event.preventDefault();projectsHall.resetHunt();}
   if(event.code==='KeyE' && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey && navigation.getMode()==='first') {
     event.preventDefault();
     if(modal && !modal.hidden) closeProject();
     else {const action=getInteraction();const project=action?.activate();if(project)openProject(project);}
   }
+});
+canvas.addEventListener('click',()=>{
+  if(document.pointerLockElement!==canvas||navigation.getMode()!=='first'||(modal&&!modal.hidden))return;
+  projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode(),camera)?.activate();
 });
 function resize(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(canvas);resize();
@@ -707,7 +711,7 @@ renderer.setAnimationLoop(()=>{
   gardenWindTime.value+=dt;
   if(!modal || modal.hidden)navigation.update(dt);
   const playerPosition=navigation.getPlayerPosition();
-  projectsHall.update(dt,playerPosition,navigation.getMode());
+  projectsHall.update(dt,playerPosition,navigation.getMode(),camera);
   interiors.update(dt,playerPosition,navigation.getMode());
   interactionTick+=dt;
   if(interactionTick>=.10){interactionTick=0;cachedAction=getInteraction();}
