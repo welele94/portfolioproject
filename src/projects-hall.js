@@ -92,14 +92,14 @@ export function createProjectsHall({scene, obstacles}) {
   const roof=solid(width+.7,.38,depth+.7,cx,height+.21,cz,roofMaterial);
   // A placa de fachada continua visível; não flutua no teto.
   const nameSign=new THREE.Mesh(new THREE.PlaneGeometry(10,2.4),
-    new THREE.MeshBasicMaterial({map:signTexture('CENTRO TECNOLÓGICO','Projetos · Entra e explora'),side:THREE.DoubleSide,toneMapped:false}));
+    new THREE.MeshBasicMaterial({map:signTexture('PROJETOS','Explora · Experimenta · Descobre'),side:THREE.DoubleSide,toneMapped:false}));
   nameSign.position.set(cx,5.6,2.27);scene.add(nameSign);
 
   const interactables=[doorAction];
   // Galeria: quatro quadros à altura dos olhos, dois em cada parede lateral.
   const projects=[
     {title:'Buddha Club',subtitle:'Onde tudo começou',detail:'O meu primeiro projeto, desenvolvido antes de utilizar inteligência artificial. Um trabalho de que me orgulho especialmente.',url:'https://codepen.io/eutudo94/full/jOZJgKL',image:'./images/buddhaclub.png',x:11.78,z:-4,rotation:Math.PI/2},
-    {title:'Hunt Red',subtitle:'Projeto web',detail:'Um projeto de desenvolvimento web disponível no CodePen.',url:'https://codepen.io/eutudo94/full/MWLVRLM',image:'./images/huntred.png',x:11.78,z:-12,rotation:Math.PI/2},
+    {title:'HuntRed',subtitle:'Desafio de lógica · 100 casas',detail:'Preenche as 100 casas sem repetir: avança três posições na horizontal ou vertical, ou duas na diagonal. Joga no tabuleiro 3D ou abre a versão original.',url:'https://codepen.io/eutudo94/full/MWLVRLM',image:'./images/huntred.png',x:11.78,z:-12,rotation:Math.PI/2},
     {title:'NextSeat',subtitle:'Projeto de aplicação',detail:'Projeto de desenvolvimento de uma aplicação. O código-fonte está disponível no GitHub.',url:'https://github.com/welele94/NextSeatProject',image:'./images/nextseat.png',x:28.22,z:-4,rotation:-Math.PI/2},
     {title:'Help!',subtitle:'Aplicação de apoio e motivação',detail:'Projeto académico de programação orientada a objetos, persistência e interface, com atenção aos princípios SOLID.',url:'https://github.com/welele94/help_app',x:28.22,z:-12,rotation:-Math.PI/2}
   ];
@@ -170,64 +170,9 @@ export function createProjectsHall({scene, obstacles}) {
   for(const x of [18.35,21.65])solid(.08,2.4,.09,x,1.4,1.70,cyan);
   solid(3.38,.06,.09,20,2.62,1.70,purple);
   for(let x=12.2;x<28;x+=.48)solid(.14,2.0,.12,x,5.05,-17.60,graphite);
-  const labSign=new THREE.Mesh(new THREE.PlaneGeometry(6.4,2.1),new THREE.MeshBasicMaterial({map:signTexture('DEV LAB','CODE · CREATE · EXPLORE'),toneMapped:false}));
+  const labSign=new THREE.Mesh(new THREE.PlaneGeometry(6.4,2.1),new THREE.MeshBasicMaterial({map:signTexture('PROJETOS','CODE · CREATE · EXPLORE'),toneMapped:false}));
   labSign.position.set(20,4.35,-17.43);scene.add(labSign);
 
-  // Texturas procedurais: terminais e editores fictícios, sem dependências.
-  function screenMaterial(kind){
-    const c=document.createElement('canvas');c.width=1536;c.height=864;
-    const ctx=c.getContext('2d');ctx.scale(2,2);
-    ctx.fillStyle='#080e18';ctx.fillRect(0,0,768,432);
-    ctx.fillStyle='#202c3c';ctx.fillRect(0,0,768,34);
-    for(let i=0;i<3;i++){ctx.fillStyle=['#fa6e83','#ffcf70','#62dbad'][i];ctx.beginPath();ctx.arc(16+i*18,17,5,0,Math.PI*2);ctx.fill();}
-    ctx.font='bold 24px monospace';ctx.fillStyle='#b8c8de';ctx.fillText(kind===0?'workspace / main.js':kind===1?'dev@lab: ~/projects':'SYSTEM MONITOR',95,23);
-    const lines=kind===0?['import * as THREE from "three";','','const scene = new THREE.Scene();','const camera = createCamera();','const renderer = createRenderer();','','function animate(dt) {','  world.update(dt);','  renderer.render(scene, camera);','}','','// build something new','export { scene, camera };']:kind===1?['$ npm run dev','[OK] Starting local workspace','[OK] Assets loaded','[OK] Scene initialized','','$ git status','On branch main','Working tree clean','','$ node diagnostics.js','[OK] Render pipeline ready','[OK] All systems online','dev@lab:~$ _']:['CPU / GPU TELEMETRY','=======================','CPU   [|||||||||     ]  64%','GPU   [|||||||||||   ]  78%','RAM   [||||||        ]  43%','','RENDER ENGINE: ONLINE','NETWORK: CONNECTED','BUILD: SUCCESS','','FRAME BUFFER: READY','STATUS: NOMINAL'];
-    ctx.font='bold 29px monospace';
-    for(let j=0;j<Math.min(lines.length,9);j++){
-      ctx.fillStyle=kind===0?['#80d6ff','#c3a6ff','#9de7b5'][j%3]:kind===1?'#65e8a5':'#56d5ee';
-      ctx.fillText(lines[j],24,75+j*40,720);
-    }
-    const texture=sharpTexture(c);
-    return new THREE.MeshBasicMaterial({map:texture,toneMapped:false});
-  }
-  const screens=[screenMaterial(0),screenMaterial(1),screenMaterial(2)];
-  // Três estações de trabalho junto ao fundo, monitores voltados à entrada.
-  // Colisões só nos móveis ao nível do jogador.
-  for(let i=0;i<3;i++){
-    const x=15.3+i*4.7,z=-15.5;
-    const led=i===1?purple:cyan;
-    solid(3.55,.10,1.30,x,.94,z,graphite,true);
-    for(const dx of [-1.55,1.55])solid(.14,.84,1.08,x+dx,.55,z,metal);
-    solid(3.38,.035,.035,x,.87,z+.67,led);
-    // Dois monitores, com pé, moldura e conteúdo legível.
-    for(let j=0;j<2;j++){
-      const mx=x-.69+j*1.10,mz=z-.40;
-      solid(.42,.04,.27,mx,1.02,mz,metal);
-      solid(.09,.25,.09,mx,1.17,mz,metal);
-      solid(1.04,.62,.095,mx,1.57,mz,metal);
-      const display=new THREE.Mesh(new THREE.PlaneGeometry(.97,.55),screens[(i+j)%3]);
-      display.position.set(mx,1.57,mz+.051);scene.add(display);
-    }
-    // Torre com painel RGB, teclado e rato.
-    solid(.39,.73,.64,x+1.43,.56,z-.18,metal);
-    solid(.29,.54,.018,x+1.43,.58,z+.151,graphite);
-    for(const dy of [-.15,.11]){
-      const fan=new THREE.Mesh(new THREE.TorusGeometry(.102,.016,8,24),led);
-      fan.position.set(x+1.43,.58+dy,z+.166);scene.add(fan);
-    }
-    solid(.52,.035,.18,x-.15,1.015,z+.30,rubber);
-    for(let k=0;k<4;k++)for(let j=0;j<10;j++)solid(.043,.014,.032,x-.37+j*.048,1.039,z+.238+k*.043,graphite);
-    solid(.10,.045,.16,x+.43,1.025,z+.30,metal);
-    solid(.022,.008,.08,x+.43,1.05,z+.30,led);
-    // Cadeira de escritório virada para a secretária.
-    const chairZ=z+1.40;
-    solid(.61,.13,.62,x,.66,chairZ,rubber,true);
-    solid(.58,.76,.13,x,1.08,chairZ+.28,graphite);
-    solid(.10,.46,.10,x,.38,chairZ,metal);
-    solid(.68,.065,.095,x,.21,chairZ,metal);
-    solid(.095,.065,.68,x,.21,chairZ,metal);
-    for(const dx of [-.35,.35])solid(.09,.10,.48,x+dx,.94,chairZ,metal);
-  }
   // Teto escuro com vigas e luminárias; ocultável em vista aérea.
   const ceilingDetails=new THREE.Group();scene.add(ceilingDetails);
   function ceilingPiece(w,h,d,x,y,z,material){
@@ -243,14 +188,11 @@ export function createProjectsHall({scene, obstacles}) {
   ceilingPiece(16.40,.065,19.35,20,8.96,-8,ceilingFinish);
   // Juntas entre painéis do revestimento, acima dos quadros e da circulação.
   for(const z of [-14,-10,-6,-2])ceilingPiece(16.30,.025,.025,20,8.915,z,metal);
-  // Ilha central expositiva: bancada, base recuada e iluminação inferior.
-  solid(4.7,.13,2.25,20,1.12,-6.8,graphite,true);
-  solid(4.15,.84,1.72,20,.61,-6.8,charcoal);
-  solid(4.25,.055,.045,20,.26,-5.92,cyan);
-  solid(4.25,.055,.045,20,.26,-7.68,purple);
-  for(const x of [17.89,22.11])solid(.045,.055,1.76,x,.26,-6.8,purple);
+  // NextSeat: exposição dedicada, fora do corredor central.
+  solid(3.2,.95,2.25,24.8,.655,-5.7,graphite,true);
+  solid(3.25,.065,2.3,24.8,1.165,-5.7,cyan);
   // Maquete de avião comercial, referência visual ao NextSeat.
-  const aircraft=new THREE.Group();aircraft.position.set(18.9,1.78,-6.8);scene.add(aircraft);
+  const aircraft=new THREE.Group();aircraft.position.set(24.8,1.78,-5.7);scene.add(aircraft);
   const fuselageMat=new THREE.MeshStandardMaterial({color:0xe5eaf2,metalness:.18,roughness:.42});
   const aircraftBlue=new THREE.MeshStandardMaterial({color:0x3179be,roughness:.5});
   function airMesh(geometry,material,x,y,z){
@@ -274,49 +216,70 @@ export function createProjectsHall({scene, obstacles}) {
   const finShape=new THREE.Shape();finShape.moveTo(-.75,0);finShape.lineTo(-.70,.30);finShape.lineTo(-.52,.30);finShape.lineTo(-.40,0);finShape.closePath();
   airMesh(new THREE.ExtrudeGeometry(finShape,{depth:.035,bevelEnabled:false}),aircraftBlue,0,.04,-.0175);
   airMesh(new THREE.SphereGeometry(.064,12,8),metal,.60,.075,0);
-  solid(.48,.055,.48,18.9,1.215,-6.8,metal);
-  solid(.055,.50,.055,18.9,1.49,-6.8,graphite);
-  // Puzzle de lógica tipo torre de Hanói (expositivo nesta fase).
-  solid(1.35,.09,.75,21.15,1.23,-6.8,metal);
-  const diskMats=[cyan,purple,pink,graphite];
-  for(let k=0;k<3;k++)solid(.045,.48,.045,20.75+k*.40,1.51,-6.8,graphite);
-  for(let k=0;k<4;k++){
-    const disk=new THREE.Mesh(new THREE.CylinderGeometry(.18-k*.034,.18-k*.034,.075,28),diskMats[k]);
-    disk.position.set(20.75,1.32+k*.077,-6.8);scene.add(disk);
+  solid(.48,.055,.48,24.8,1.215,-5.7,metal);
+  solid(.055,.50,.055,24.8,1.49,-5.7,graphite);
+  // HuntRed: tabuleiro jogável no chão, uma única textura e um único mesh.
+  const boardX=12.1,boardZ=-16.6,cellSize=.68,boardSize=10*cellSize;
+  const boardCanvas=document.createElement('canvas');boardCanvas.width=2048;boardCanvas.height=2048;
+  const boardCtx=boardCanvas.getContext('2d'),boardTexture=sharpTexture(boardCanvas);
+  const boardMesh=new THREE.Mesh(new THREE.PlaneGeometry(boardSize,boardSize),new THREE.MeshBasicMaterial({map:boardTexture,toneMapped:false}));
+  boardMesh.rotation.x=-Math.PI/2;boardMesh.position.set(boardX+boardSize/2,.196,boardZ+boardSize/2);scene.add(boardMesh);
+  const red=neon(0xf25050);
+  for(const z of [boardZ-.035,boardZ+boardSize+.035])solid(boardSize+.14,.018,.05,boardX+boardSize/2,.197,z,red);
+  for(const x of [boardX-.035,boardX+boardSize+.035])solid(.05,.018,boardSize,x,.197,boardZ+boardSize/2,red);
+  const values=new Uint8Array(100);let last=-1,score=0,hover=-1,error=-1,errorUntil=0,allowed=new Set();
+  const hud=document.createElement('div');
+  hud.style.cssText='position:fixed;left:16px;bottom:80px;z-index:6;max-width:330px;background:#151a24ed;color:#fff;padding:12px 16px;border:1px solid #f25050;border-radius:8px;font:14px/1.5 system-ui;pointer-events:none;white-space:pre-line';
+  hud.hidden=true;document.body.appendChild(hud);
+  function legal(from,to){
+    if(from<0||to<0||values[to])return false;
+    const dr=Math.abs(Math.floor(from/10)-Math.floor(to/10)),dc=Math.abs(from%10-to%10);
+    return (dr===0&&dc===3)||(dr===3&&dc===0)||(dr===2&&dc===2);
   }
-  // Rack de rede 42U estilizado: patch panels, switches, UPS e cablagem.
-  // Localização afastada das paredes dos projetos e da entrada.
-  const rx=24.65,rz=-9.2;
-  solid(.86,2.22,.92,rx,1.29,rz,metal,true);
-  solid(.67,2.04,.025,rx,1.29,rz+.472,charcoal);
-  for(const dx of [-.37,.37])solid(.07,2.15,.055,rx+dx,1.29,rz+.50,graphite);
-  const green=neon(0x54f19a),amber=neon(0xffc76a);
-  function rackUnit(y,h,material){
-    solid(.64,h,.055,rx,y,rz+.50,material);
-    for(const dx of [-.29,.29])solid(.025,.025,.012,rx+dx,y,rz+.535,graphite);
-  }
-  for(const y of [2.12,1.94,1.76,1.58]){
-    rackUnit(y,.135,graphite);
-    for(let k=0;k<12;k++){
-      const px=rx-.255+k*.045;
-      solid(.032,.047,.012,px,y,rz+.535,rubber);
-      solid(.018,.009,.013,px,y+.039,rz+.54,k%5===0?amber:green);
+  function redraw(){
+    const n=boardCanvas.width/10;
+    boardCtx.fillStyle='#151a24';boardCtx.fillRect(0,0,2048,2048);
+    boardCtx.textAlign='center';boardCtx.textBaseline='middle';boardCtx.font='bold 112px system-ui';
+    for(let k=0;k<100;k++){
+      const x=k%10*n,y=Math.floor(k/10)*n;
+      boardCtx.fillStyle=k===error?'#f27059':values[k]?'#ffcc00':allowed.has(k)?'#ffeb99':'#f5f5f5';
+      boardCtx.fillRect(x+5,y+5,n-10,n-10);
+      if(k===hover){boardCtx.strokeStyle='#e13434';boardCtx.lineWidth=12;boardCtx.strokeRect(x+12,y+12,n-24,n-24);}
+      if(values[k]){boardCtx.fillStyle='#282015';boardCtx.fillText(String(values[k]),x+n/2,y+n/2);}
     }
+    boardTexture.needsUpdate=true;
+    const status=score===100?'Parabéns! Completaste o HuntRed.':score>0&&!allowed.size?'Sem movimentos válidos. Resultado: '+score+'/100':score===0?'Escolhe qualquer casa para começar.':'Escolhe uma casa amarela clara.';
+    hud.textContent='HuntRed   '+score+' / 100\n'+status+'\nE — marcar casa · F — reiniciar\nSalta 2 casas em linha ou 1 na diagonal.';
   }
-  for(const y of [1.34,1.17,.99]){rackUnit(y,.13,metal);for(let k=0;k<8;k++)solid(.047,.014,.012,rx-.20+k*.055,y,rz+.535,graphite);}
-  rackUnit(.67,.36,graphite);
-  solid(.21,.09,.012,rx-.10,.70,rz+.535,cyan);
-  solid(.045,.045,.016,rx+.18,.70,rz+.54,green);
-  rackUnit(.35,.16,metal);
-  for(let k=0;k<5;k++){
-    const px=rx-.23+k*.09;
-    const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(px,2.12,rz+.55),new THREE.Vector3(px-.05,2.04,rz+.68),new THREE.Vector3(px+.025,1.85,rz+.67),new THREE.Vector3(px+.045,1.76,rz+.55)]);
-    const cable=new THREE.Mesh(new THREE.TubeGeometry(curve,12,.012,6,false),k%2?purple:cyan);scene.add(cable);
+  function play(){
+    if(hover<0||score===100||(score>0&&!allowed.size))return;
+    if(score>0&&!legal(last,hover)){error=hover;errorUntil=performance.now()+500;redraw();return;}
+    values[hover]=++score;last=hover;error=-1;allowed=new Set();
+    for(let k=0;k<100;k++)if(legal(last,k))allowed.add(k);
+    redraw();
   }
-  // Luz de estado e identificação.
-  const rackLabel=new THREE.Mesh(new THREE.PlaneGeometry(.61,.15),new THREE.MeshBasicMaterial({map:signTexture('NETWORK','SWITCH · UPS'),toneMapped:false}));
-  rackLabel.position.set(rx,2.34,rz+.54);scene.add(rackLabel);
-
+  function resetHunt(){values.fill(0);last=-1;score=0;error=-1;allowed.clear();redraw();}
+  const floorAction={label:()=>score===100?'HuntRed concluído':score>0&&!allowed.size?'HuntRed — F para reiniciar':'Jogar HuntRed nesta casa',activate:()=>{play();}};
+  function huntAction(position,mode){
+    if(mode!=='first')return null;
+    const col=Math.floor((position.x-boardX)/cellSize),row=Math.floor((position.z-boardZ)/cellSize);
+    return col>=0&&col<10&&row>=0&&row<10?floorAction:null;
+  }
+  function updateHunt(position,mode){
+    const active=!!huntAction(position,mode);
+    hud.hidden=!active;
+    const next=active?Math.floor((position.z-boardZ)/cellSize)*10+Math.floor((position.x-boardX)/cellSize):-1;
+    if(next!==hover){hover=next;redraw();}
+    if(error>=0&&performance.now()>errorUntil){error=-1;redraw();}
+  }
+  redraw();
+  const huntSign=new THREE.Mesh(new THREE.PlaneGeometry(5.5,1.15),new THREE.MeshBasicMaterial({map:signTexture('HuntRed','100 casas · E para jogar'),toneMapped:false}));
+  huntSign.position.set(15.5,2.8,-17.63);scene.add(huntSign);
+  // Help! e Buddha Club: bases dedicadas, reservadas para os modelos finais.
+  solid(2.4,.78,1.25,25.9,.57,-12.1,graphite,true);
+  solid(2.45,.045,1.30,25.9,.99,-12.1,neon(0x54f19a));
+  solid(2.4,.78,1.25,14.4,.57,-3.6,graphite,true);
+  solid(2.45,.045,1.30,14.4,.99,-3.6,purple);
   const labLights=[];
   // Luzes locais coloridas, sem sombras adicionais pesadas.
   for(const [x,z,color] of [[12.5,-7,0x15bfff],[27.5,-7,0x9b45ff],[20,-15,0x536bff]]){
@@ -328,6 +291,8 @@ export function createProjectsHall({scene, obstacles}) {
 
   // O teto permanece fechado em primeira pessoa; apenas a vista aérea permite inspeção.
   function update(dt,position,mode='first'){
+    updateHunt(position,mode);
+    aircraft.rotation.y+=dt*.55;
     const targetAngle=doorOpen?Math.PI/2:0;
     const next=angle+Math.sign(targetAngle-angle)*Math.min(Math.abs(targetAngle-angle),dt*2.2);
     // Não empurrar nem prender o jogador durante a animação.
@@ -338,5 +303,5 @@ export function createProjectsHall({scene, obstacles}) {
     ceilingDetails.visible=roof.visible;
     return inside;
   }
-  return {update,projects,interactables};
+  return {update,projects,interactables,huntAction,resetHunt};
 }

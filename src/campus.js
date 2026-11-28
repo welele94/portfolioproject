@@ -652,6 +652,8 @@ for(const action of [...projectsHall.interactables,...interiors.interactables])
   for(const mesh of action.meshes)targets.set(mesh,action);
 function getInteraction(){
   if(navigation.getMode()!=='first'||(modal&&!modal.hidden))return null;
+  const floorAction=projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode());
+  if(floorAction)return floorAction;
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
   raycaster.far=3;
@@ -684,6 +686,7 @@ document.querySelector('#project-close')?.addEventListener('click',closeProject)
 modal?.addEventListener('click',(event)=>{if(event.target===modal)closeProject();});
 window.addEventListener('keydown',(event)=>{
   if(event.code==='Escape' && modal && !modal.hidden)closeProject();
+  if(event.code==='KeyF'&&!event.repeat&&(!modal||modal.hidden)&&projectsHall.huntAction(navigation.getPlayerPosition(),navigation.getMode())){event.preventDefault();projectsHall.resetHunt();}
   if(event.code==='KeyE' && !event.repeat && !event.altKey && !event.ctrlKey && !event.metaKey && navigation.getMode()==='first') {
     event.preventDefault();
     if(modal && !modal.hidden) closeProject();
